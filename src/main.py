@@ -58,20 +58,8 @@ if __name__ == '__main__':
 
     # fix labels in all data so the labels range from 0 to the number of classes.
     # first get a list of every file in the directory.
-    files = os.listdir(os.path.dirname(__file__) + "/data")
-    # then remove the files that are not csv files.
-    files = [file for file in files if file.endswith(".csv")]
-    # then fix the labels in each file.
-    for file in files:
-        print(file)
-        frame = dp.csv_to_df(os.path.dirname(__file__) + "/data/" + file)
-        y = frame.columns[-1]
-        # we achieve this by subtracting the minimum value from the column.
-        frame[y] = frame[y] - frame[y].min()
 
-        frame.to_csv(os.path.dirname(__file__) + "/data/" + file, index=False)
-
-    names = ["winequality-white",]
+    names = ["data",]
     for name in names:
         print(name)
         test_knn_foreach_feature(name, REMOVED_PERCENTAGES)

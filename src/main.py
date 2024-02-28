@@ -59,10 +59,10 @@ if __name__ == '__main__':
     # fix labels in all data so the labels range from 0 to the number of classes.
     # first get a list of every file in the directory.
 
-    names = ["data",]
+    names = ["data", "winequality-red", "winequality-white", "sonar_all_data",]
     for name in names:
         print(name)
-        test_knn_foreach_feature(name, REMOVED_PERCENTAGES)
+        test_knn_foreach_feature(name, REMOVED_PERCENTAGES, 15)
     # get_best_constants(name, REMOVED_PERCENTAGES)
 
 # NOTE: the following file names are not binary classification problems:

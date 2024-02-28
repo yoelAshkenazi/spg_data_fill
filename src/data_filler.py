@@ -307,8 +307,8 @@ def find_intersection(a: np.ndarray, b: np.ndarray):
 def lin_reg(data: pd.DataFrame):
     """
     This method takes a dataset with missing values, and fills the missing values using a linear regression model.
-    :param data: the dataset.
-    :return: datagrame with filled values.
+    :param: data: the dataset.
+    :return: dataframe with filled values.
     """
 
     y = data.iloc[:, -1].copy()
@@ -443,7 +443,6 @@ def fill_data(data_name):
 
         x = torch.from_numpy(x.values.astype(np.float32))  # convert data to torch tensor.
         x = FeaturePropagation(num_iterations=40).propagate(x, edges, mask)  # fill data.
-        print("data filled!")
         return pd.concat([pd.DataFrame(x.cpu().detach().numpy()), pd.DataFrame(data.y)], axis=1)  # return filled data.
 
     # case 2: tabular dataset, hence we need to create edges.
@@ -464,7 +463,6 @@ def fill_data(data_name):
     x = torch.from_numpy(x.values.astype(np.float32))  # convert data to torch tensor.
     x = FeaturePropagation(num_iterations=40).propagate(x, edges, mask)  # fill data.
 
-    print("data filled!")
     return pd.concat([pd.DataFrame(x.cpu().detach().numpy()), pd.DataFrame(y)], axis=1)  # return filled data.
 
 
@@ -513,7 +511,6 @@ def remove_and_fill(data_name, missing_rate: float = 0.1,):
 
         data_filled = pd.concat([pd.DataFrame(x.cpu().detach().numpy()), pd.DataFrame(y)], axis=1)
 
-        print("data filled!")
         return data_unfilled, data_filled
 
     # else it's a tabular dataset.
@@ -542,7 +539,6 @@ def remove_and_fill(data_name, missing_rate: float = 0.1,):
     model = FeaturePropagation(num_iterations=40)
 
     x = model.propagate(x, edges, mask)
-    print("data filled!")
     # return filled data.
     return data_unfilled, pd.concat([pd.DataFrame(x.cpu().detach().numpy()), pd.DataFrame(y)], axis=1)
 

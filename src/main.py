@@ -1,5 +1,4 @@
 from src.temp_tester import *
-import data_filler as df
 import pandas as pd
 import build_classifier as classify
 from sklearn.model_selection import train_test_split
@@ -57,9 +56,16 @@ if __name__ == '__main__':
     print(classify.run_xgb(tr, te)[1])
     for name in names:
         for i in range(9):
-            uf, data = remove_and_fill(names[0], REMOVED_PERCENTAGES[i])
-            print(f"filled-{10*(i+1)}%: ", test_data_(data), end=", ")
-            print(f"unfilled-{10*(i+1)}%: ", test_data_(uf))
+            full = []
+            unfilled = []
+
+            for _ in range(25):
+                uf, data = remove_and_fill(names[0], REMOVED_PERCENTAGES[i])
+                full.append(classify.run_xgb(data, te)[1])
+                unfilled.append(classify.run_xgb(uf, te)[1])
+
+            print(f"filled avg for {10*(i+1)}%: {np.mean(full):.3f}+-{np.std(full):.3f}")
+            print(f"unfilled avg for {10*(i+1)}%: {np.mean(unfilled):.3f}+-{np.std(unfilled):.3f}")
     # get_best_constants(name, REMOVED_PERCENTAGES)
 
 # TODO- fix the issue with datasets.

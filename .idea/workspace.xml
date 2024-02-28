@@ -4,14 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8665b147-4db5-4c8b-9ff2-74b0233e354d" name="Changes" comment="second commit">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/build_classifier_with_opt.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/build_classifier_with_opt.py" afterDir="false" />
+    <list default="true" id="8665b147-4db5-4c8b-9ff2-74b0233e354d" name="Changes" comment="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation.">
       <change beforePath="$PROJECT_DIR$/src/data_filler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/data_filler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data_preparation.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plotting.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/plotting.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/temp_tester.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/temp_tester.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -20,6 +15,9 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="ProjectErrors" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;&quot;,
@@ -105,7 +103,7 @@
       <workItem from="1708608346916" duration="123000" />
       <workItem from="1708863090118" duration="194000" />
       <workItem from="1709115444551" duration="1983000" />
-      <workItem from="1709137854523" duration="3654000" />
+      <workItem from="1709137854523" duration="4208000" />
     </task>
     <task id="LOCAL-00001" summary="second commit">
       <option name="closed" value="true" />
@@ -115,7 +113,15 @@
       <option name="project" value="LOCAL" />
       <updated>1708521253191</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation.">
+      <option name="closed" value="true" />
+      <created>1709141607025</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1709141607025</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -134,10 +140,11 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="second commit" />
-    <option name="LAST_COMMIT_MESSAGE" value="second commit" />
+    <MESSAGE value="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/spg$data_filler.coverage" NAME="data_filler Coverage Results" MODIFIED="1709140099901" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
-    <SUITE FILE_PATH="coverage/spg$main.coverage" NAME="main Coverage Results" MODIFIED="1709140838742" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/spg$data_filler.coverage" NAME="data_filler Coverage Results" MODIFIED="1709141989589" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/spg$main.coverage" NAME="main Coverage Results" MODIFIED="1709141994702" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
   </component>
 </project>

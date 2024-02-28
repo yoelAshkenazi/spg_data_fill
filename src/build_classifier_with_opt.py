@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
 import torch
-import src.data_preparation as dp
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
@@ -39,7 +39,7 @@ def run_nn(train: pd.DataFrame, test: pd.DataFrame):
     the auc score is calculated on the test set and returned."""
 
     # separate the labels from the data, in both train and test parts. (labels are y_, and data is x_).
-    train_set, val_set = dp.split(train, 0.8, 0.2)
+    train_set, val_set = train_test_split(train, test_size=0.2)
 
     x_train, y_train = (train_set.iloc[:, :-1].to_numpy().astype(np.float32),
                         train_set.iloc[:, -1].to_numpy().astype(np.float32))
@@ -168,14 +168,14 @@ def run_xgb(train: pd.DataFrame, test: pd.DataFrame):
         max_depth = trial.suggest_int('max_depth', 3, 9, 2)
         min_child_weight = trial.suggest_int('min_child_weight', 1, 5, 2)
         max_delta_step = trial.suggest_int('max_delta_step', 0, 5, 1)
-        lmbd = trial.suggest_uniform('lambda', 0.0, 1.0)
+        lambda_ = trial.suggest_uniform('lambda', 0.0, 1.0)
         alpha = trial.suggest_uniform('alpha', 0.0, 1.0)
         refresh_leaf = trial.suggest_categorical('refresh_leaf', [0, 1])
 
         # initialize new XGB classifier.
         model_ = XGBClassifier(n_estimators=n_estimators, learning_rate=learning_rate, gamma=gamma,
                                objective='binary:logistic', eval_metric='auc', max_depth=max_depth,
-                               min_child_weight=min_child_weight, reg_lambda=lmbd, alpha=alpha,
+                               min_child_weight=min_child_weight, reg_lambda=lambda_, alpha=alpha,
                                refresh_leaf=refresh_leaf, max_delta_step=max_delta_step)
 
         model_.fit(x_train, y_train)

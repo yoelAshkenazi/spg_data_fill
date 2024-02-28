@@ -2,13 +2,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-import src.data_preparation as dp
+from sklearn.model_selection import train_test_split
+
 from sklearn.utils import shuffle
 from fp_builds.filling_strategies import filling
 from fp_builds import make_graph as mg
 from fp_builds import data_loading, utils
 
 import os
+
+from src import data_filler
 
 
 # divide the data into k folds, run the neural network on each fold and return the cross validation accuracy.
@@ -22,7 +25,7 @@ def k_fold(data: pd.DataFrame, func, k=5):
 
     # for each fold, train a neural network on the remaining folds and evaluate it on the current fold.
     for i in range(0, k):
-        train, test = dp.split(data.copy(), 0.8, 0.2)
+        train, test = train_test_split(data.copy(), test_size=1 / k)
 
         # run the classifier on the training and test set.
         a, b = func(train, test)
@@ -83,7 +86,7 @@ def auc(data_name: str, percentages: np.array, func, name, k=5):
         # shuffle.
         data = shuffle(data)
 
-        data_missing, _ = dp.remove_random_cells_and_z_score(data, percentages[i])
+        data_missing, _ = data_filler.remove_random_cells(data, percentages[i])
         # initialize the cross validation accuracy.
         a, b = k_fold(data_missing, func, k)
         train_auc[i] += a
@@ -91,33 +94,6 @@ def auc(data_name: str, percentages: np.array, func, name, k=5):
 
     # returns the AUC array.
     return train_auc, test_auc
-
-
-# def auc_opt(data: pd.DataFrame, percentages: np.array, func, name):
-#     # initialize the AUC array.
-#     train_auc = np.zeros(len(percentages))
-#     test_auc = np.zeros(len(percentages))
-#     #prints what function is used.
-#     print(f"function: {name}")
-#     # for each percentage of missing values, run the neural network using the k-fold method and calculate the AUC.
-#     for i in range(0, len(percentages)):
-#         print(f"missing percentage: {int(percentages[i] * 100)}%")
-#
-#         # run 10 times and take avg.
-#         for j in range(10):
-#
-#             # initialize the data with missing values.
-#             data_missing = dp.remove_random_cells(data.copy(), percentages[i])
-#             train, val, test = dp.split(data_missing, 0.64, 0.16, 0.2)
-#
-#             a1, a2 = func(train, val, test)
-#             train_auc[i] += a1
-#             test_auc[i] += a2
-#
-#         train_auc[i] /= 10
-#         test_auc[i] /= 10
-#
-#     return train_auc, test_auc
 
 
 # method to plot the AUC as a function of the percentage of missing values, using the k-fold method with k=5,
@@ -177,7 +153,7 @@ def auc_imputation(data_name: str, percentages: np.array, func, name, graph_styl
         # shuffle.
         data = shuffle(data)
 
-        data_missing, mask = dp.remove_random_cells_and_z_score(data, percentages[i])
+        data_missing, mask = data_filler.remove_random_cells(data, percentages[i])
 
         # impute the missing values.
         x = data_missing.drop(data_missing.columns[-1], axis=1)
@@ -227,35 +203,6 @@ def auc_imputation(data_name: str, percentages: np.array, func, name, graph_styl
         test_auc[i] += b
 
     return train_auc, test_auc
-
-
-# method to plot the AUC as a function of the percentage of missing values, using optimization method and imputing
-# missing data.
-# def auc_opt_imputation(data: pd.DataFrame, percentages: np.array, func, name):
-#     # initialize the AUC array.
-#     train_auc = np.zeros(len(percentages))
-#     test_auc = np.zeros(len(percentages))
-#     # prints what function is used.
-#     print(f"function: {name}")
-#     # for each percentage of missing values, run the neural network using the k-fold method and calculate the AUC.
-#     for i in range(0, len(percentages)):
-#         print(f"missing percentage: {int(percentages[i] * 100)}%")
-#
-#         # run 10 times and take avg.
-#         for j in range(10):
-#
-#             # initialize the data with missing values.
-#             data_missing = dp.remove_random_cells(data.copy(), percentages[i], True)
-#             data_missing = build_fp.impute(data_missing)
-#             train, val, test = dp.split(data_missing, 0.64, 0.16, 0.2)
-#             a, b = func(train, val, test)
-#             train_auc[i] += a
-#             test_auc[i] += b
-#
-#         train_auc[i] /= 10
-#         test_auc[i] /= 10
-#
-#     return train_auc, test_auc
 
 
 def plot_multiple_graphs(x_values, *args, labels=None, title="Multiple Graphs", x_label="% of missing values",

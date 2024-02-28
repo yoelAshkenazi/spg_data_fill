@@ -8,6 +8,7 @@ import torch
 import numpy as np
 import os
 
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
@@ -44,9 +45,10 @@ def z_score(data_frame: pd.DataFrame) -> pd.DataFrame:
 
 
 # remove percentage of random cells by replacing them with 0.
-def remove_random_cells_and_z_score(data_frame: pd.DataFrame, percentage: float):
+def remove_random_cells(data_frame: pd.DataFrame, percentage: float):
     """
-
+    This method takes a dataset and a percentage, and removes the percentage of the data by replacing the cells with 0,
+    Then it normalizes the data using z-score.
     :param data_frame: the dataset.
     :param percentage: the rate of missing values.
     :return: the dataset with missing values, and the mask as a torch tensor of boolean values.
@@ -290,6 +292,106 @@ def calc_l2(data: pd.DataFrame):
     return dists
 
 
+def find_intersection(a: np.ndarray, b: np.ndarray):
+    """
+    this method takes in two matrices and returns a set of the row-wise intersection between a and b.
+    :param a: 1st matrix.
+    :param b: 2nd matrix.
+    :return: set of unique rows.
+    """
+    a = set(tuple(x) for x in a)
+    b = set(tuple(x) for x in b)
+    return a.intersection(b)
+
+
+def lin_reg(data: pd.DataFrame):
+    """
+    This method takes a dataset with missing values, and fills the missing values using a linear regression model.
+    :param data: the dataset.
+    :return: datagrame with filled values.
+    """
+
+    y = data.iloc[:, -1].copy()
+    y = y.reset_index(drop=True)
+    x = data.drop(data.columns[-1], axis=1)
+
+    x = x.values
+
+    for i in range(x.shape[1]):
+        # get rows where the feature is not nan.
+        rows = ~np.isnan(x[:, i])
+        z = np.nan_to_num(x.copy())
+        z = np.delete(z, i, axis=1)
+        data_i = z[rows]
+        labels_i = x[rows, i]
+        # train the regression model on the rows.
+        reg = LinearRegression()
+        reg.fit(data_i, labels_i)
+
+        # fill the missing values with the regression model.
+        x[~rows, i] = np.dot(z[~rows], reg.coef_)
+        x[~rows, i] += reg.intercept_
+
+    return pd.concat([pd.DataFrame(x), y], axis=1)
+
+
+def metric_by_feature(data: pd.DataFrame, idx: int):
+    """
+    this method calculates the metric for each feature, assuming it was filled with linear regression.
+    :param data: the dataset.
+    :param idx: the index of the feature.
+    :return: the metric.
+    """
+    _data = data.copy().values
+    valid_indices = ~np.isnan(_data[:, idx])
+    valid_data = _data[valid_indices, idx]
+
+    diffs = np.subtract.outer(valid_data, valid_data) ** 2
+    np.fill_diagonal(diffs, np.nan)  # Diagonal should be NaNs
+    max_val = np.nanmax(diffs)
+    diffs[np.isnan(diffs)] = max_val  # Replace NaNs with max value
+
+    dists = np.empty((_data.shape[0], _data.shape[0]))
+    dists.fill(max_val)  # Fill with max_val initially
+    dists[np.ix_(valid_indices, valid_indices)] = diffs
+
+    return dists
+
+
+def make_feature_edges(data: pd.DataFrame):
+    """
+    This method takes a dataset with missing values, and using the metric_by_feature method, it creates a "knn" graph
+    for each feature, then intersect it with the knn graph of the linear regression filled data to get the edges.
+    :param data: the dataset.
+    :return:
+    """
+
+    # separate the features from the labels.
+    x = data.drop(data.columns[-1], axis=1)
+
+    edges = []
+    for i in range(x.shape[1]):
+        dists = metric_by_feature(x, i)
+        knn_edges = get_knn_edges(dists, k=10).t().numpy().tolist()
+        edges.extend(knn_edges)
+
+    edges = np.unique(edges, axis=0)
+    x_reg = lin_reg(data.copy(), ).iloc[:, :-1]
+
+    dists_ = calc_l2(x_reg)
+    edges_l2 = get_knn_edges(dists_, 40)
+
+    # intersect edges and edges_l2.
+    edges_l2 = edges_l2.t().numpy()
+    edges_l2 = np.unique(edges_l2, axis=0)
+    edges = np.unique(edges, axis=0)
+    edges = np.array(list(find_intersection(edges, edges_l2)))
+
+    edges = torch.tensor(edges).t().long()
+
+    return edges
+
+
 def get_custom_distances(features: pd.DataFrame):
     """
     this method calculates the pairwise distances between each pair of rows in the missing data.
@@ -354,10 +456,10 @@ def fill_data(data_name):
     y = torch.from_numpy(y.values.astype(np.int64))  # convert labels to torch tensor.
     x = data.drop(data.columns[-1], axis=1)  # get data.
 
-    # calculate distances.
-    distances = get_custom_distances(x)
-    edges = get_knn_edges(distances)  # get edges.
-    mask = find_mask(x)  # get mask.
+    # calculate edges.
+    edges = make_feature_edges(data)
+    # calculate mask.
+    mask = find_mask(x)
 
     x = torch.from_numpy(x.values.astype(np.float32))  # convert data to torch tensor.
     x = FeaturePropagation(num_iterations=40).propagate(x, edges, mask)  # fill data.
@@ -425,7 +527,7 @@ def remove_and_fill(data_name, missing_rate: float = 0.1,):
     data = z_score(data)
 
     # remove data.
-    data, mask = remove_random_cells_and_z_score(data, missing_rate)
+    data, mask = remove_random_cells(data, missing_rate)
 
     data_unfilled = data.copy()
 
@@ -434,9 +536,7 @@ def remove_and_fill(data_name, missing_rate: float = 0.1,):
     y = torch.from_numpy(data.iloc[:, -1].values.astype(np.int64)).to(device)
 
     # filling data.
-    # calculate distances.
-    distances = get_custom_distances(x)
-    edges = get_knn_edges(distances.values)
+    edges = make_feature_edges(data)
     x = torch.from_numpy(x.values.astype(np.float32)).to(device)
 
     model = FeaturePropagation(num_iterations=40)
@@ -490,7 +590,7 @@ def run_xgb(train: pd.DataFrame, test: pd.DataFrame):
 
 
 # define a wrapper method for run_xgb.
-def test_data(data: pd.DataFrame):
+def test_data_(data: pd.DataFrame):
     """
     this method takes a DataFrame, split it to train and test, and uses run_xgb.
     :param data: the dataset (features and labels).

@@ -1,17 +1,8 @@
-import os
-
-import pandas as pd
-import pickle as pkl
-
-import src.plotting
-from src import data_preparation as dp
-from src import build_classifier as classify
-from src import build_classifier_with_opt as classify_opt
 from src.temp_tester import *
-from src.data_filler import remove_and_fill, test_data
-from src import plotting as plot
-from sklearn.utils import shuffle
-import matplotlib.pyplot as plt
+import data_filler as df
+import pandas as pd
+import build_classifier as classify
+from sklearn.model_selection import train_test_split
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -59,15 +50,17 @@ if __name__ == '__main__':
     # fix labels in all data so the labels range from 0 to the number of classes.
     # first get a list of every file in the directory.
 
-    names = ["data", "winequality-red", "winequality-white", "sonar_all_data",]
+    names = ["data"]
+    # test.
+    og = pd.read_csv(f"data/{names[0]}.csv")
+    tr, te = train_test_split(og, test_size=0.2)
+    print(classify.run_xgb(tr, te)[1])
     for name in names:
-        print(name)
-        test_knn_foreach_feature(name, REMOVED_PERCENTAGES, 15)
+        for i in range(9):
+            uf, data = remove_and_fill(names[0], REMOVED_PERCENTAGES[i])
+            print(f"filled-{10*(i+1)}%: ", test_data_(data), end=", ")
+            print(f"unfilled-{10*(i+1)}%: ", test_data_(uf))
     # get_best_constants(name, REMOVED_PERCENTAGES)
 
-# NOTE: the following file names are not binary classification problems:
-# 1. accent-mfcc-data-1.csv -> this is a 6 class classification problem.
-# 2. onlinenewspopularity.csv -> todo: think of a way to convert this to a classification problem.
-# 3.sensorless_drive_diagnosis.csv -> this is a 12 class classification problem.
-# 4. winequality-red.csv -> this is a 6 class classification problem.
-# 5. winequality-white.csv -> this is a 6 class classification problem.
+# TODO- fix the issue with datasets.
+# TODO- update the readme file.

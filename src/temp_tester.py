@@ -1,5 +1,5 @@
 from src import build_classifier as classify
-import data_preparation as dp
+import data_filler as df
 from fp_builds.filling_strategies import filling
 from fp_builds import make_graph as mg
 # from sklearn.utils import shuffle
@@ -31,7 +31,7 @@ def get_stats(name: str):
 
     # shuffle.
     data_ = shuffle(data_)
-    data_ = dp.z_score(data_)
+    data_ = df.z_score(data_)
     x_ = data_.copy()
     x_ = x_.drop(x_.columns[-1], axis=1)
 
@@ -52,9 +52,9 @@ def get_stats(name: str):
 
     for rate in rates:
         data = data_.copy()
-        data = dp.z_score(data)
+        data = df.z_score(data)
 
-        data, mask = dp.remove_random_cells(data, rate)
+        data, mask = df.remove_random_cells(data, rate)
         # working only with euc dist.
         x = data.drop(data.columns[-1], axis=1)
 
@@ -133,7 +133,7 @@ def test_data_removal(name: str):
 
     # shuffle.
     data_ = shuffle(data_)
-    data_ = dp.z_score(data_)
+    data_ = df.z_score(data_)
     x_ = data_.copy()
     x_ = x_.drop(x_.columns[-1], axis=1)
 
@@ -145,8 +145,8 @@ def test_data_removal(name: str):
 
     for rate in rates:
         data = data_.copy()
-        data = dp.z_score(data)
-        data, mask = dp.remove_random_cells(data, rate)
+        data = df.z_score(data)
+        data, mask = df.remove_random_cells(data, rate)
         # working only with euc dist.
         x = data.drop(data.columns[-1], axis=1)
 
@@ -201,7 +201,7 @@ def get_best_constants(name: str, rates: list, iters: int = 10):
     # shuffle.
     data_ = shuffle(data_)
     # z-score.
-    data_ = dp.z_score(data_)
+    data_ = df.z_score(data_)
 
     x_ = data_.copy()
     x_ = x_.drop(x_.columns[-1], axis=1)
@@ -219,7 +219,7 @@ def get_best_constants(name: str, rates: list, iters: int = 10):
         for i in range(10):
             print("rate ", rate, " iteration ", (i + 1))
             # remove data.
-            data, mask = dp.remove_random_cells(data_.copy(), rate)
+            data, mask = df.remove_random_cells(data_.copy(), rate)
             data = data.drop(data.columns[-1], axis=1)
 
             x = data.drop(data.columns[-1], axis=1)
@@ -255,7 +255,7 @@ def get_best_constants(name: str, rates: list, iters: int = 10):
             params_list[idx, i] = np.mean(temp_params[:, i])
 
         # remove data.
-        data, mask = dp.remove_random_cells(data_.copy(), rate)
+        data, mask = df.remove_random_cells(data_.copy(), rate)
 
         x = data.drop(data.columns[-1], axis=1)
         # collect edges for unfilled data graph.
@@ -393,7 +393,7 @@ def plot_scatter_with_divisions(name: str, rates: list, k: int = 3):
     # shuffle.
     data_ = shuffle(data_)
     # z-score.
-    data_ = dp.z_score(data_)
+    data_ = df.z_score(data_)
 
     x_ = data_.copy()
     x_ = x_.drop(x_.columns[-1], axis=1)
@@ -409,7 +409,7 @@ def plot_scatter_with_divisions(name: str, rates: list, k: int = 3):
     for i, rate in enumerate(rates):
         # remove data.
         print(f"rate: {rate}")
-        data, mask = dp.remove_random_cells(data_.copy(), rate)
+        data, mask = df.remove_random_cells(data_.copy(), rate)
 
         data = test_regression_features_(data)
         data = data.drop(data.columns[-1], axis=1)
@@ -499,12 +499,12 @@ def test_regression_features(name: str, rate: float = 0.9):
     # remove data.
     data_ = pd.read_csv(f"data/{name}.csv")
     data_ = shuffle(data_)
-    data_ = dp.z_score(data_)
+    data_ = df.z_score(data_)
     x_ = data_.iloc[:, :-1].copy().values
     y = data_.iloc[:, -1].copy()
     y = y.reset_index(drop=True)
 
-    data, mask = dp.remove_random_cells(data_.copy(), rate)
+    data, mask = df.remove_random_cells(data_.copy(), rate)
     x = data.drop(data.columns[-1], axis=1)
 
     x = x.values
@@ -592,7 +592,7 @@ def test_knn_foreach_feature_(name: str, rate: float, ):
 
     data_ = pd.read_csv(f"data/{name}.csv")
     data_ = shuffle(data_)
-    data_ = dp.z_score(data_)
+    data_ = df.z_score(data_)
     x_ = data_.copy().drop(data_.columns[-1], axis=1)
 
     # calculate distances on full data.
@@ -603,7 +603,7 @@ def test_knn_foreach_feature_(name: str, rate: float, ):
     a = np.unique(a, axis=0)
 
     # remove data.
-    data, mask = dp.remove_random_cells(data_.copy(), rate)
+    data, mask = df.remove_random_cells(data_.copy(), rate)
     data = z_score(data)
     unfilled = data.copy()
 
@@ -618,7 +618,7 @@ def test_knn_foreach_feature_(name: str, rate: float, ):
 
     x_reg = test_regression_features_(data.copy(), )
 
-    dists_ = calc_l2(x_reg)
+    dists_ = calc_l2(x_reg).iloc[:, :-1]
     edges_l2 = mg.get_knn_edges(dists_, 40)
 
     # intersect edges and edges_l2.
@@ -654,7 +654,7 @@ def test_knn_foreach_feature(name: str, rates: list, iters: int = 25):
 
     df = pd.read_csv(f"data/{name}.csv")
     df = shuffle(df)
-    df = dp.z_score(df)
+    df = df.z_score(df)
     # add a straight line of the full data auc.
     full_train, full_test = train_test_split(df, test_size=0.2)
     _, auc = classify.run_xgb(full_train, full_test)
@@ -680,7 +680,7 @@ def test_knn_foreach_feature(name: str, rates: list, iters: int = 25):
             z.append(c_)
 
             # running FP and xgb with the true edges as well.
-            data, mask = dp.remove_random_cells(df.copy(), rate)
+            data, mask = df.remove_random_cells(df.copy(), rate)
             data = z_score(data)
             unfilled_x = data.copy().drop(data.columns[-1], axis=1)
             y_ = data.iloc[:, -1].copy()

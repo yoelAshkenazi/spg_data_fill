@@ -2,6 +2,7 @@ from src import build_classifier as classify
 import data_filler as df
 from fp_builds.filling_strategies import filling
 from fp_builds import make_graph as mg
+from fp_builds import utils
 # from sklearn.utils import shuffle
 from src.data_filler import *
 import matplotlib.pyplot as plt
@@ -186,7 +187,7 @@ def calc_l2(data: pd.DataFrame):
     return dists
 
 
-def get_best_constants(name: str, rates: list, iters: int = 10):
+def get_best_constants(name: str, rates: list, iters: int = 25):
     """
     this method calculates the correlation between the top 10% the smallest distances in the original data and the
     distances between the chosen rows in the new metric, and uses nedler-mead optimizer to find the fittest c_1,
@@ -213,67 +214,43 @@ def get_best_constants(name: str, rates: list, iters: int = 10):
     edges_true = mg.get_knn_edges(distances=distances_full, k=40)
     a = edges_true.t().numpy()
 
-    params_list = np.zeros((len(rates), 2))
+    params_list = {}
     for idx, rate in enumerate(rates):
         temp_params = np.zeros((iters, 2))  # save results from all executions in order to find mean and std.
-        for i in range(10):
+        for i in range(iters):
             print("rate ", rate, " iteration ", (i + 1))
             # remove data.
             data, mask = df.remove_random_cells(data_.copy(), rate)
             data = data.drop(data.columns[-1], axis=1)
 
             x = data.drop(data.columns[-1], axis=1)
-            # collect edges for unfilled data graph.
-            edges = []
-            for j in range(x.shape[1]):
-                dists = metric_by_feature(x, j)
-                edges.extend(mg.get_knn_edges(dists, 10).t().numpy().tolist())
 
-            edges = np.unique(np.array(edges), axis=0)
+            f_f, xor_vals = find_missing_masks(x)
+            dists = calc_l2(x)
 
-            # fill with regression.
-            data = test_regression_features_(data)
-            dists = calc_l2(data)
-
-            mask_vals = ~mask.cpu().numpy().astype(int)
-
-            d_params = lambda c: (
-                -len(find_intersection(a, np.array(list(
-                    find_intersection(edges, mg.get_knn_edges(
-                        fixed_metric(dists, mask_vals, c), 40)))))))
+            d_params = lambda _c: -len(find_intersection(a, df.get_knn_edges(
+                heur_dist_metric(dists, f_f, xor_vals, _c), 40).t().numpy()))
 
             # Initial guess for c
             initial_params = np.array([1, 1])
 
             # optimize c1, c2, using nedler-mead.
-            res = minimize(d_params, initial_params, method="Nelder-Mead", options={"disp": True})
+            res = minimize(d_params, initial_params, method="Nelder-Mead",)
 
             temp_params[i] = res.x
 
         # fix params.
-        for i in range(2):
-            params_list[idx, i] = np.mean(temp_params[:, i])
+        params_list[idx] = np.array([np.mean(temp_params[:, 0]), np.mean(temp_params[:, 1])])
 
         # remove data.
         data, mask = df.remove_random_cells(data_.copy(), rate)
 
         x = data.drop(data.columns[-1], axis=1)
-        # collect edges for unfilled data graph.
-        edges = []
-        for j in range(x.shape[1]):
-            dists = metric_by_feature(x, j)
-            edges.extend(mg.get_knn_edges(dists, 10).t().numpy().tolist())
 
-        edges = np.unique(np.array(edges), axis=0)
-
-        # fill with regression.
-        data = test_regression_features_(data)
-
-        dists = calc_l2(data)
-        dists = fixed_metric(dists, mask.cpu().numpy(), params_list[idx])
-        edges_ = mg.get_knn_edges(dists, 40).t().numpy()
-        edges_ = np.unique(edges_, axis=0)
-        edges = np.array(list(find_intersection(edges, edges_)))
+        f_f, xor_vals = find_missing_masks(x)
+        dists = calc_l2(x)
+        c = params_list[idx]
+        edges = df.get_knn_edges(heur_dist_metric(dists, f_f, xor_vals, c), 40).t().numpy()  # find the edges.
 
         print("Best params for rate " + str(int(100 * rate)) + "%:")
         for i in range(2):
@@ -282,15 +259,42 @@ def get_best_constants(name: str, rates: list, iters: int = 10):
         print("Intersection: ", len(find_intersection(a, edges)))
         print("Symmetric difference: ", len(find_uniques(a, edges)))
 
+    # save the params.
+    params_frame = pd.DataFrame(params_list)
+    params_frame.to_csv(f"heur_dists_params/params_{name}.csv")
 
-def find_top_candidates(distances, edges):
+    return params_list
+
+
+def find_missing_masks(data: pd.DataFrame):
     """
-    this method finds the distances of the knn graph.
-    :param edges:
-    :param distances:
-    :return: list of distances between the edge holders.
+    This method takes a missing values dataframe and returns the following masks:
+    for each pair of samples (rows in the dataframe object), the mask of the pairs where both are missing,
+    the mask of the pairs where only one is missing.
+    :param data: the dataset.
+    :return: two nxn matrices.
     """
-    return [distances[edges[0, i], edges[1, i]] for i in range(edges.shape[1])]
+    data = data.values
+    mask = np.isnan(data).astype(int)  # mask of missing values.
+
+    # note that the missing intersection between ith and jth rows = mask*mask^T[i,j]
+    t_t = np.dot(mask, mask.T)
+    # the xor values are the square of l2 norm of the rows in mask.
+    xor_vals = np.square(calc_l2(pd.DataFrame(mask)))
+
+    return t_t, xor_vals
+
+
+def heur_dist_metric(distances, f_f, xor_vals, c):
+    """
+    this method calculates the metric for the given distances and mask, using the given c.
+    :param distances: l2 distances.
+    :param f_f: mask of missing intersections.
+    :param xor_vals: mask of missing xor.
+    :param c: penalty coefficients.
+    :return:
+    """
+    return np.sqrt(distances + c[0] * f_f + c[1] * xor_vals)
 
 
 def find_uniques(a: np.ndarray, b: np.ndarray):
@@ -339,44 +343,6 @@ def find_diff(a: np.ndarray, b: np.ndarray):
     a = set(tuple(x) for x in a)
     b = set(tuple(x) for x in b)
     return a.difference(b)
-
-
-def calc_masks(data: pd.DataFrame):
-    """
-    this method takes a dataframe with missing values, and calculates the following distances:
-    l2 when both values are missing, sum of squares when only one is missing, mask when only one is missing.
-    :param data: the dataset.
-    :return: (t_t, xor_vals, t_f, f_t) masks.
-    """
-    data = data.values
-    mask = ~np.isnan(data)
-    data = np.nan_to_num(data)  # fill nan with 0.
-    n = data.shape[0]
-    t_t = np.zeros((n, n))
-    xor_vals = np.zeros((n, n))
-    t_f = np.zeros((n, n))
-    f_t = np.zeros((n, n))
-    truth_mask = np.zeros((n, n))
-    for i in range(n):
-        for j in range(i, n):
-            intersection = mask[i] & mask[j]
-            only_i = mask[i] & ~mask[j]
-            only_j = mask[j] & ~mask[i]
-            t_t[i, j] = np.sum(np.square(data[i, intersection] - data[j, intersection]))  # l2 where both are present.
-            xor_vals[i, j] = np.sum(np.square(data[i, only_i])) + np.sum(np.square(data[j, only_j]))  # sum of
-            # squares where only one is.
-            t_f[i, j] = np.sum(only_i)
-            f_t[i, j] = np.sum(only_j)
-            truth_mask[i, j] = np.sum(intersection)
-
-            # make all symmetric.
-            t_t[j, i] = t_t[i, j]
-            xor_vals[j, i] = xor_vals[i, j]
-            t_f[j, i] = t_f[i, j]
-            f_t[j, i] = f_t[i, j]
-            truth_mask[j, i] = truth_mask[i, j]
-
-    return t_t, xor_vals, t_f, f_t, truth_mask
 
 
 def plot_scatter_with_divisions(name: str, rates: list, k: int = 3):
@@ -652,15 +618,15 @@ def test_knn_foreach_feature(name: str, rates: list, iters: int = 25):
 
     dct = {}
 
-    df = pd.read_csv(f"data/{name}.csv")
-    df = shuffle(df)
-    df = df.z_score(df)
+    _df = pd.read_csv(f"data/{name}.csv")
+    _df = shuffle(_df)
+    _df = _df.z_score(_df)
     # add a straight line of the full data auc.
-    full_train, full_test = train_test_split(df, test_size=0.2)
+    full_train, full_test = train_test_split(_df, test_size=0.2)
     _, auc = classify.run_xgb(full_train, full_test)
 
     # getting the true edges.
-    a = df.copy()
+    a = _df.copy()
     a = a.drop(a.columns[-1], axis=1)
     distances_full = calc_l2(a)
     edges_true = mg.get_knn_edges(distances=distances_full, k=40)
@@ -680,7 +646,7 @@ def test_knn_foreach_feature(name: str, rates: list, iters: int = 25):
             z.append(c_)
 
             # running FP and xgb with the true edges as well.
-            data, mask = df.remove_random_cells(df.copy(), rate)
+            data, mask = _df.remove_random_cells(_df.copy(), rate)
             data = z_score(data)
             unfilled_x = data.copy().drop(data.columns[-1], axis=1)
             y_ = data.iloc[:, -1].copy()
@@ -717,7 +683,7 @@ def test_knn_foreach_feature(name: str, rates: list, iters: int = 25):
 
     plt.xlabel("Rate of missing values")
     # if 2 classes label the y-axis to AUC, else to accuracy.
-    if len(df.iloc[:, -1].unique()) == 2:
+    if len(_df.iloc[:, -1].unique()) == 2:
         plt.ylabel("AUC score")
     else:
         plt.ylabel("Accuracy")
@@ -756,3 +722,214 @@ def fixed_metric(distances: np.array, mask: np.array, c: np.array):
             dists[i, j] = dists[j, i] = np.sqrt(dists[i, j] + c[0] * np.sum(mask[i]) + c[1] * np.sum(mask[j]))
 
     return dists
+
+
+def plot_correct_graphs(name: str, rates: list, iters: int = 25,):
+    """
+    This method plots the xgb results for the filled data using the true edges, compared with the results of the full
+    data.
+    :param iters: num of iterations for each rate.
+    :param name: name of the dataset.
+    :param rates: rates of missing values.
+    :return:
+    """
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    if name in ["Cora", "Citeseer", "Pubmed"]:  # we have the correct edges.
+        data_, _ = df.get_dataset(name)
+        data = data_.data
+        data_original = pd.concat([pd.DataFrame(data.x.cpu().detach().numpy()), pd.DataFrame(data.y)], axis=1)
+        data_original = shuffle(data_original)
+        data_original = df.z_score(data_original)
+        data_ = data_original.copy()
+
+    else:  # we create the correct edges via knn(5)
+        data_ = df.get_dataset(name)
+        data_ = shuffle(data_)
+        data_ = df.z_score(data_)
+        x_ = data_.copy().drop(data_.columns[-1], axis=1)
+
+        # calculate distances on full data.
+        distances_full = calc_l2(x_)
+        # use knn method to find the nodes between which the distances are smallest.
+        _edges = df.get_knn_edges(distances=distances_full, k=5)
+
+    # test on full data.
+    true_score = 0
+    for i in range(iters):
+        train, test = train_test_split(data_, test_size=0.2)
+        true_score += classify.run_xgb(train, test)[1]  # saving the score of the full data.
+
+    true_score /= iters
+
+    # for each rate, calculate the score of the filled data using the true edges.
+    scores = {}
+    print(f"Working on Dataset: {name}")
+    for rate in rates:
+        print(f"Rate: {rate}")
+        for i in range(iters):
+            print(f"\tIteration: {i + 1}")
+
+            if name in ["Cora", "Citeseer", "Pubmed"]:
+                dataset, _ = df.get_dataset(name)
+                data = dataset.data
+                n_nodes, n_features = data.x.shape
+
+                missing_feature_mask = utils.get_missing_feature_mask(
+                    rate=rate, n_nodes=n_nodes, n_features=n_features, type="uniform",
+                ).to(device)
+
+                x = data.x.clone()
+                x[~missing_feature_mask] = np.nan
+
+                y = data.y.clone()
+
+                filled_features = (
+                    filling("feature_propagation", data.edge_index, x, missing_feature_mask, 40, )
+                )
+
+                data_filled = pd.concat([pd.DataFrame(filled_features.cpu().detach().numpy()), pd.DataFrame(y)], axis=1)
+
+                train, test = train_test_split(data_filled, test_size=0.2)
+                _, d = classify.run_xgb(train, test)
+                if rate in scores:
+                    scores[rate].append(d)
+                else:
+                    scores[rate] = [d]
+
+                continue
+
+            data, mask = df.remove_random_cells(data_.copy(), rate)
+            data = df.z_score(data)
+            unfilled_x = data.copy().drop(data.columns[-1], axis=1)
+            y_ = data.iloc[:, -1].copy()
+
+            unfilled_x = torch.from_numpy(unfilled_x.values.astype(np.float32)).to(device)
+            y_ = torch.from_numpy(y_.values.astype(np.int64)).to(device)
+
+            # Filling the data using the true edges.
+
+            filling_true = filling("feature_propagation", _edges, unfilled_x, mask, 40, )
+
+            filled_true = pd.concat([pd.DataFrame(filling_true.cpu().numpy()), pd.DataFrame(y_)], axis=1)
+            train_true, test_true = train_test_split(filled_true, test_size=0.2)
+            _, d = classify.run_xgb(train_true, test_true)
+            if rate in scores:
+                scores[rate].append(d)
+            else:
+                scores[rate] = [d]
+
+    # plot the results.
+    avs = [np.mean(scores[rate]) for rate in rates]
+    stds = [np.std(scores[rate]) / np.sqrt(iters) for rate in rates]
+
+    plt.errorbar(rates, avs, stds, label="Filled with True edges")
+    plt.axhline(y=true_score, color="r", linestyle="--", label="Full data")
+    plt.xlabel("Rate of missing values")
+    # if 2 classes label the y-axis to AUC, else to accuracy.
+    if len(data_.iloc[:, -1].unique()) == 2:
+        plt.ylabel("AUC score")
+    else:
+        plt.ylabel("Accuracy")
+    plt.legend()
+    plt.grid()
+    plt.title(f"FP with true edges in {name}")
+    plt.savefig(f"table_to_graph_plots/True Graphs/{name}.png")
+    plt.show()
+
+
+def plot_incorrect_graphs(name: str, rates: list, iters: int = 25):
+    """
+    This method plots the xgb results for the unfilled data, and the data filled with l2 edges and optimized heuristic
+    edges.
+    :param name: name of the dataset. The assumption is tabular data.
+    :param rates: rates of missing values.
+    :param iters: number of iterations per rate.
+    :return:
+    """
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    data_ = df.get_dataset(name)
+    data_ = shuffle(data_)
+    data_ = df.z_score(data_)
+
+    l2_scores = {}
+    heur_scores = {}
+    unfilled_scores = {}
+
+    for rate in rates:
+        for i in range(iters):
+
+            # remove data.
+            data, mask = df.remove_random_cells(data_.copy(), rate)
+            data = df.z_score(data)
+
+            unfilled = data.copy()  # copy unfilled data.
+            x = data.drop(data.columns[-1], axis=1)
+            y = data.iloc[:, -1].copy()
+
+            # calculate l2 edges.
+            dists_l2 = calc_l2(x)
+            edges_l2 = mg.get_knn_edges(dists_l2, 5)
+
+            # calculate heur edges using the params.
+            params = pd.read_csv(f"heur_dists_params/params_{name}.csv").values  # get the params for this dataset.
+
+            f_f, xor_vals = find_missing_masks(x)  # find the masks.
+            dists_heur = heur_dist_metric(dists_l2, f_f, xor_vals, params[rate])
+            edges_heur = df.get_knn_edges(dists_heur, 5)
+
+            # fill the data.
+            x = torch.from_numpy(x.values.astype(np.float32)).to(device)
+            y = torch.from_numpy(y.values.astype(np.int64)).to(device)
+            filling_l2 = filling("feature_propagation", edges_l2, x, mask, 40, )
+            filling_heur = filling("feature_propagation", edges_heur, x, mask, 40, )
+
+            filled_l2 = pd.concat([pd.DataFrame(filling_l2.cpu().numpy()), pd.DataFrame(y)], axis=1)
+            filled_heur = pd.concat([pd.DataFrame(filling_heur.cpu().numpy()), pd.DataFrame(y)], axis=1)
+
+            # run xgb on unfilled and filled data.
+            unfilled_train, unfilled_test = train_test_split(unfilled, test_size=0.2)
+            train_l2, test_l2 = train_test_split(filled_l2, test_size=0.2)
+            train_heur, test_heur = train_test_split(filled_heur, test_size=0.2)
+
+            # calculate the scores.
+            _, a = classify.run_xgb(unfilled_train, unfilled_test)
+            _, b = classify.run_xgb(train_l2, test_l2)
+            _, c = classify.run_xgb(train_heur, test_heur)
+
+            # save the scores.
+            if rate in l2_scores:
+                l2_scores[rate].append(b)
+                heur_scores[rate].append(c)
+                unfilled_scores[rate].append(a)
+            else:
+                l2_scores[rate] = [b]
+                heur_scores[rate] = [c]
+                unfilled_scores[rate] = [a]
+
+    # plot the results.
+    avs0 = [np.mean(unfilled_scores[rate]) for rate in rates]
+    stds0 = [np.std(unfilled_scores[rate]) / np.sqrt(iters) for rate in rates]
+    avs1 = [np.mean(l2_scores[rate]) for rate in rates]
+    stds1 = [np.std(l2_scores[rate]) / np.sqrt(iters) for rate in rates]
+    avs2 = [np.mean(heur_scores[rate]) for rate in rates]
+    stds2 = [np.std(heur_scores[rate]) / np.sqrt(iters) for rate in rates]
+
+    plt.errorbar(rates, avs0, stds0, label="Unfilled")
+    plt.errorbar(rates, avs1, stds1, label="Filled with L2 edges")
+    plt.errorbar(rates, avs2, stds2, label="Filled with Heur edges")
+    plt.xlabel("Rate of missing values")
+    # if 2 classes label the y-axis to AUC, else to accuracy.
+    if len(data_.iloc[:, -1].unique()) == 2:
+        plt.ylabel("AUC score")
+    else:
+        plt.ylabel("Accuracy")
+    plt.legend()
+    plt.grid()
+    plt.title(f"FP with L2 and Heur edges in {name}")
+    plt.savefig(f"table_to_graph_plots/Metric Graphs/{name}.png")
+
+
+# TODO- test the last method.

@@ -377,7 +377,7 @@ def plot_scatter_with_divisions(name: str, rates: list, k: int = 3):
         print(f"rate: {rate}")
         data, mask = df.remove_random_cells(data_.copy(), rate)
 
-        data = test_regression_features_(data)
+        data = test_regression_features_(data).iloc[:, :-1]
         data = data.drop(data.columns[-1], axis=1)
 
         dists = calc_l2(data)
@@ -582,7 +582,7 @@ def test_knn_foreach_feature_(name: str, rate: float, ):
 
     edges = np.unique(np.array(edges), axis=0)
 
-    x_reg = test_regression_features_(data.copy(), )
+    x_reg = test_regression_features_(data.copy(), ).iloc[:, :-1]
 
     dists_ = calc_l2(x_reg).iloc[:, :-1]
     edges_l2 = mg.get_knn_edges(dists_, 40)

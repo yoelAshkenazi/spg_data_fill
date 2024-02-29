@@ -98,10 +98,7 @@ def run_xgb(train: pd.DataFrame, test: pd.DataFrame):
     x_train, y_train = (train.iloc[:, :-1].to_numpy().astype(np.float32),
                         train.iloc[:, -1].to_numpy().astype(np.float32))
     x_test = test.iloc[:, :-1].to_numpy().astype(np.float32)
-    true_labels = test.iloc[:, -1].to_numpy().astype(np.float32)
-
-    # make predictions, and convert to nearest value in {0,1} in order to compare with the true labels.
-    y_test = true_labels
+    y_test = test.iloc[:, -1].to_numpy().astype(np.float32)
 
     if len(np.unique(y_test)) == 2:
         # initialize new XGB classifier.
@@ -109,8 +106,6 @@ def run_xgb(train: pd.DataFrame, test: pd.DataFrame):
         # train the model.
         model.fit(x_train, y_train)
 
-        # make predictions, and convert to nearest value in {0,1} in order to compare with the true labels.
-        y_test = true_labels
         y_pred_test = model.predict(x_test)
         y_pred_train = model.predict(x_train)
 

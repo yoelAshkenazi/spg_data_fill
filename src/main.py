@@ -1,7 +1,4 @@
 from src.temp_tester import *
-import pandas as pd
-import build_classifier as classify
-from sklearn.model_selection import train_test_split
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -49,24 +46,11 @@ if __name__ == '__main__':
     # fix labels in all data so the labels range from 0 to the number of classes.
     # first get a list of every file in the directory.
 
-    names = ["data"]
-    # test.
-    og = pd.read_csv(f"data/{names[0]}.csv")
-    tr, te = train_test_split(og, test_size=0.2)
-    print(classify.run_xgb(tr, te)[1])
+    names = ["Banknote", "sonar", "RedWine", "WhiteWine"]
+
     for name in names:
-        for i in range(9):
-            full = []
-            unfilled = []
-
-            for _ in range(25):
-                uf, data = remove_and_fill(names[0], REMOVED_PERCENTAGES[i])
-                full.append(classify.run_xgb(data, te)[1])
-                unfilled.append(classify.run_xgb(uf, te)[1])
-
-            print(f"filled avg for {10*(i+1)}%: {np.mean(full):.3f}+-{np.std(full):.3f}")
-            print(f"unfilled avg for {10*(i+1)}%: {np.mean(unfilled):.3f}+-{np.std(unfilled):.3f}")
-    # get_best_constants(name, REMOVED_PERCENTAGES)
+        print(name)
+        get_best_constants(name, REMOVED_PERCENTAGES)
 
 # TODO- fix the issue with datasets.
 # TODO- update the readme file.

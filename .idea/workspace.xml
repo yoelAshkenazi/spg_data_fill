@@ -4,20 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8665b147-4db5-4c8b-9ff2-74b0233e354d" name="Changes" comment="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation.">
+    <list default="true" id="8665b147-4db5-4c8b-9ff2-74b0233e354d" name="Changes" comment="Fixed regression_feature instances to not include labels.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/build_classifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/build_classifier.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data/UCI_Credit_Card.csv" beforeDir="false" afterPath="$PROJECT_DIR$/src/data/Credit.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data/data.csv" beforeDir="false" afterPath="$PROJECT_DIR$/src/data/Banknote.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data/sonar_all_data.csv" beforeDir="false" afterPath="$PROJECT_DIR$/src/data/Sonar.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data/winequality-red.csv" beforeDir="false" afterPath="$PROJECT_DIR$/src/data/Redwine.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data/winequality-white.csv" beforeDir="false" afterPath="$PROJECT_DIR$/src/data/Whitewine.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data_filler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/data_filler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/table_to_graph_plots/knn_foreach_data.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/table_to_graph_plots/knn_foreach_sonar_all_data.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/table_to_graph_plots/knn_foreach_winequality-red.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/table_to_graph_plots/knn_foreach_winequality-white.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/temp_tester.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/temp_tester.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -118,7 +106,8 @@
       <workItem from="1709137854523" duration="4450000" />
       <workItem from="1709146927505" duration="579000" />
       <workItem from="1709153530490" duration="604000" />
-      <workItem from="1709209674778" duration="454000" />
+      <workItem from="1709209674778" duration="1013000" />
+      <workItem from="1709210790704" duration="97000" />
     </task>
     <task id="LOCAL-00001" summary="second commit">
       <option name="closed" value="true" />
@@ -144,7 +133,23 @@
       <option name="project" value="LOCAL" />
       <updated>1709142265469</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Added functions to plot the true and metric graphs for each dataset.&#10;Added function to get the best optimized constants for a given dataset.&#10;need to test the parameters and the incorrect graphs.">
+      <option name="closed" value="true" />
+      <created>1709210283503</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1709210283503</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Fixed regression_feature instances to not include labels.">
+      <option name="closed" value="true" />
+      <created>1709210681365</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1709210681365</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -164,7 +169,9 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="second commit" />
     <MESSAGE value="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation." />
-    <option name="LAST_COMMIT_MESSAGE" value="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation." />
+    <MESSAGE value="Added functions to plot the true and metric graphs for each dataset.&#10;Added function to get the best optimized constants for a given dataset.&#10;need to test the parameters and the incorrect graphs." />
+    <MESSAGE value="Fixed regression_feature instances to not include labels." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed regression_feature instances to not include labels." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/spg$data_filler.coverage" NAME="data_filler Coverage Results" MODIFIED="1709141989589" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />

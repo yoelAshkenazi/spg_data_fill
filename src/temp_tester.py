@@ -8,6 +8,7 @@ from src.data_filler import *
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from sklearn.linear_model import LinearRegression
+from spagog.gog_model import gog_model
 
 
 def test_data(name: str):
@@ -933,3 +934,22 @@ def plot_incorrect_graphs(name: str, rates: list, iters: int = 25):
 
 
 # TODO- test the last method.
+
+
+def test_spagog_results(name: str, rates: list, iters: int = 25):
+    """
+    this method tests the spagog method on the given dataset.
+    :param name: name of dataset.
+    :param rates: rate of missing values.
+    :param iters: number of iterations for each rate.
+    :return:
+    """
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    results = {}
+
+    if name not in ["Cora", "CiteSeer", "Pubmed"]:  # the data is tabular.
+        data_ = df.get_dataset(name)
+        data_ = shuffle(data_)
+        data_ = df.z_score(data_)
+

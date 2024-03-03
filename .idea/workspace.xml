@@ -4,21 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8665b147-4db5-4c8b-9ff2-74b0233e354d" name="Changes" comment="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation.">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/spg.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/spg.iml" afterDir="false" />
+    <list default="true" id="8665b147-4db5-4c8b-9ff2-74b0233e354d" name="Changes" comment="Added plotting functions in order to plot the correct and incorrect graphs for each dataset.&#10;need to further test the incorrect method.&#10;need to test the parameter optimization function, and the usage of it.&#10;&#10;todo- 1. update this commit in overleaf. 2. add the spagog results to the plots.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/build_classifier.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/build_classifier.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data/UCI_Credit_Card.csv" beforeDir="false" afterPath="$PROJECT_DIR$/src/data/Credit.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data/data.csv" beforeDir="false" afterPath="$PROJECT_DIR$/src/data/Banknote.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data/sonar_all_data.csv" beforeDir="false" afterPath="$PROJECT_DIR$/src/data/Sonar.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data/winequality-red.csv" beforeDir="false" afterPath="$PROJECT_DIR$/src/data/Redwine.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/data/winequality-white.csv" beforeDir="false" afterPath="$PROJECT_DIR$/src/data/Whitewine.csv" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/table_to_graph_plots/knn_foreach_data.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/table_to_graph_plots/knn_foreach_sonar_all_data.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/table_to_graph_plots/knn_foreach_winequality-red.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/table_to_graph_plots/knn_foreach_winequality-white.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/temp_tester.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/temp_tester.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -121,7 +109,7 @@
       <workItem from="1708863090118" duration="194000" />
       <workItem from="1709115444551" duration="1983000" />
       <workItem from="1709137854523" duration="4208000" />
-      <workItem from="1709199035027" duration="7131000" />
+      <workItem from="1709199035027" duration="10327000" />
     </task>
     <task id="LOCAL-00001" summary="second commit">
       <option name="closed" value="true" />
@@ -139,7 +127,23 @@
       <option name="project" value="LOCAL" />
       <updated>1709141607025</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Added plotting functions in order to plot the correct and incorrect graphs for each dataset.&#10;need to further test the incorrect method.&#10;need to test the parameter optimization function, and the usage of it.&#10;&#10;todo- 1. update this commit in overleaf. 2. add the spagog results to the plots.">
+      <option name="closed" value="true" />
+      <created>1709209128769</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1709209128770</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Added plotting functions in order to plot the correct and incorrect graphs for each dataset.&#10;need to further test the incorrect method.&#10;need to test the parameter optimization function, and the usage of it.&#10;&#10;todo- 1. update this commit in overleaf. 2. add the spagog results to the plots.">
+      <option name="closed" value="true" />
+      <created>1709209447638</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1709209447638</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -159,12 +163,13 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="second commit" />
     <MESSAGE value="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation." />
-    <option name="LAST_COMMIT_MESSAGE" value="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation." />
+    <MESSAGE value="Added plotting functions in order to plot the correct and incorrect graphs for each dataset.&#10;need to further test the incorrect method.&#10;need to test the parameter optimization function, and the usage of it.&#10;&#10;todo- 1. update this commit in overleaf. 2. add the spagog results to the plots." />
+    <option name="LAST_COMMIT_MESSAGE" value="Added plotting functions in order to plot the correct and incorrect graphs for each dataset.&#10;need to further test the incorrect method.&#10;need to test the parameter optimization function, and the usage of it.&#10;&#10;todo- 1. update this commit in overleaf. 2. add the spagog results to the plots." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/spg$data_filler.coverage" NAME="data_filler Coverage Results" MODIFIED="1709141989589" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
-    <SUITE FILE_PATH="coverage/spg_data_fill$main.coverage" NAME="main Coverage Results" MODIFIED="1709208960675" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
-    <SUITE FILE_PATH="coverage/spg_data_fill$main_.coverage" NAME="main_ Coverage Results" MODIFIED="1709204515401" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/spg_data_fill$main.coverage" NAME="main Coverage Results" MODIFIED="1709447731753" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/spg_data_fill$main_.coverage" NAME="main_ Coverage Results" MODIFIED="1709447698591" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
     <SUITE FILE_PATH="coverage/spg$main.coverage" NAME="main Coverage Results" MODIFIED="1709141994702" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
     <SUITE FILE_PATH="coverage/spg_data_fill$temp_tester.coverage" NAME="temp_tester Coverage Results" MODIFIED="1709203331233" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
   </component>

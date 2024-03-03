@@ -871,14 +871,14 @@ def plot_incorrect_graphs(name: str, rates: list, iters: int = 25):
 
             # calculate l2 edges.
             dists_l2 = calc_l2(x)
-            edges_l2 = mg.get_knn_edges(dists_l2, 5)
+            edges_l2 = mg.get_knn_edges(dists_l2, 40)
 
             # calculate heur edges using the params.
             params = pd.read_csv(f"heur_dists_params/params_{name}.csv").values  # get the params for this dataset.
 
             f_f, xor_vals = find_missing_masks(x)  # find the masks.
             dists_heur = heur_dist_metric(dists_l2, f_f, xor_vals, params[rate])
-            edges_heur = df.get_knn_edges(dists_heur, 5)
+            edges_heur = df.get_knn_edges(dists_heur, 40)
 
             # fill the data.
             x = torch.from_numpy(x.values.astype(np.float32)).to(device)

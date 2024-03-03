@@ -707,24 +707,6 @@ def test_knn_foreach_feature(name: str, rates: list, iters: int = 25):
     dct.to_csv(f"table_to_graph_results/knn_foreach_{name}.csv")
 
 
-def fixed_metric(distances: np.array, mask: np.array, c: np.array):
-    """
-    this method adds penalties on missing features.
-    :param c: penalties.
-    :param distances: the original distances after linear regression.
-    :param mask: mask of present and missing values. 1 for missing, 0 for present.
-    :return:
-    """
-
-    dists = np.square(distances)
-
-    for i in range(dists.shape[0]):
-        for j in range(i, dists.shape[0]):
-            dists[i, j] = dists[j, i] = np.sqrt(dists[i, j] + c[0] * np.sum(mask[i]) + c[1] * np.sum(mask[j]))
-
-    return dists
-
-
 def plot_correct_graphs(name: str, rates: list, iters: int = 25,):
     """
     This method plots the xgb results for the filled data using the true edges, compared with the results of the full

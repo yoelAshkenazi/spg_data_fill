@@ -100,15 +100,12 @@ def run_xgb(train: pd.DataFrame, test: pd.DataFrame):
     x_test = test.iloc[:, :-1].to_numpy().astype(np.float32)
     y_test = test.iloc[:, -1].to_numpy().astype(np.float32)
 
-    # make predictions, and convert to nearest value in {0,1} in order to compare with the true labels.
-
     if len(np.unique(y_test)) == 2:
         # initialize new XGB classifier.
         model = XGBClassifier(n_estimators=10)
         # train the model.
         model.fit(x_train, y_train)
 
-        # make predictions, and convert to nearest value in {0,1} in order to compare with the true labels.
         y_pred_test = model.predict(x_test)
         y_pred_train = model.predict(x_train)
 

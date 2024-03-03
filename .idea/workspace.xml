@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8665b147-4db5-4c8b-9ff2-74b0233e354d" name="Changes" comment="Added plotting functions in order to plot the correct and incorrect graphs for each dataset.&#10;need to further test the incorrect method.&#10;need to test the parameter optimization function, and the usage of it.&#10;&#10;todo- 1. update this commit in overleaf. 2. add the spagog results to the plots.">
+    <list default="true" id="8665b147-4db5-4c8b-9ff2-74b0233e354d" name="Changes" comment="Fixed regression_feature instances to not include labels.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/temp_tester.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/temp_tester.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -30,27 +29,23 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Notification.DisplayName-DoNotAsk-InteractivePlotsSuggestion": "Interactive plots available",
-    "Notification.DoNotAsk-InteractivePlotsSuggestion": "true",
-    "Python.data_filler.executor": "Run",
-    "Python.main.executor": "Run",
-    "Python.main_.executor": "Run",
-    "Python.temp_tester.executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "/home/kanna/PycharmProjects/spg_data_fill/src",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.lookFeel",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.data_filler.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/yoela/PycharmProjects/spg/src&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="Push.Settings">
     <option name="SHOW_DETAILS_PANEL" value="false" />
   </component>
@@ -61,7 +56,7 @@
     </key>
   </component>
   <component name="RunManager">
-    <configuration name="main_" type="PythonConfigurationType" factoryName="Python">
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="spg" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -70,8 +65,8 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.8" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="SDK_NAME" value="spg_env" />
+      <option name="WORKING_DIRECTORY" value="C:\Users\yoela\PycharmProjects\spg\src" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
@@ -108,8 +103,11 @@
       <workItem from="1708608346916" duration="123000" />
       <workItem from="1708863090118" duration="194000" />
       <workItem from="1709115444551" duration="1983000" />
-      <workItem from="1709137854523" duration="4208000" />
-      <workItem from="1709199035027" duration="10327000" />
+      <workItem from="1709137854523" duration="4450000" />
+      <workItem from="1709146927505" duration="579000" />
+      <workItem from="1709153530490" duration="604000" />
+      <workItem from="1709209674778" duration="1013000" />
+      <workItem from="1709210790704" duration="97000" />
     </task>
     <task id="LOCAL-00001" summary="second commit">
       <option name="closed" value="true" />
@@ -127,23 +125,31 @@
       <option name="project" value="LOCAL" />
       <updated>1709141607025</updated>
     </task>
-    <task id="LOCAL-00003" summary="Added plotting functions in order to plot the correct and incorrect graphs for each dataset.&#10;need to further test the incorrect method.&#10;need to test the parameter optimization function, and the usage of it.&#10;&#10;todo- 1. update this commit in overleaf. 2. add the spagog results to the plots.">
+    <task id="LOCAL-00003" summary="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation.">
       <option name="closed" value="true" />
-      <created>1709209128769</created>
+      <created>1709142265469</created>
       <option name="number" value="00003" />
       <option name="presentableId" value="LOCAL-00003" />
       <option name="project" value="LOCAL" />
-      <updated>1709209128770</updated>
+      <updated>1709142265469</updated>
     </task>
-    <task id="LOCAL-00004" summary="Added plotting functions in order to plot the correct and incorrect graphs for each dataset.&#10;need to further test the incorrect method.&#10;need to test the parameter optimization function, and the usage of it.&#10;&#10;todo- 1. update this commit in overleaf. 2. add the spagog results to the plots.">
+    <task id="LOCAL-00004" summary="Added functions to plot the true and metric graphs for each dataset.&#10;Added function to get the best optimized constants for a given dataset.&#10;need to test the parameters and the incorrect graphs.">
       <option name="closed" value="true" />
-      <created>1709209447638</created>
+      <created>1709210283503</created>
       <option name="number" value="00004" />
       <option name="presentableId" value="LOCAL-00004" />
       <option name="project" value="LOCAL" />
-      <updated>1709209447638</updated>
+      <updated>1709210283503</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Fixed regression_feature instances to not include labels.">
+      <option name="closed" value="true" />
+      <created>1709210681365</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1709210681365</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -163,14 +169,12 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="second commit" />
     <MESSAGE value="Fully cleaned the code files.&#10;For next update - need to fix the edge creation AGAIN.&#10;(it'll all be over soon, good luck).&#10;TODO- fix dataset issues, fix edge creation." />
-    <MESSAGE value="Added plotting functions in order to plot the correct and incorrect graphs for each dataset.&#10;need to further test the incorrect method.&#10;need to test the parameter optimization function, and the usage of it.&#10;&#10;todo- 1. update this commit in overleaf. 2. add the spagog results to the plots." />
-    <option name="LAST_COMMIT_MESSAGE" value="Added plotting functions in order to plot the correct and incorrect graphs for each dataset.&#10;need to further test the incorrect method.&#10;need to test the parameter optimization function, and the usage of it.&#10;&#10;todo- 1. update this commit in overleaf. 2. add the spagog results to the plots." />
+    <MESSAGE value="Added functions to plot the true and metric graphs for each dataset.&#10;Added function to get the best optimized constants for a given dataset.&#10;need to test the parameters and the incorrect graphs." />
+    <MESSAGE value="Fixed regression_feature instances to not include labels." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed regression_feature instances to not include labels." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/spg$data_filler.coverage" NAME="data_filler Coverage Results" MODIFIED="1709141989589" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
-    <SUITE FILE_PATH="coverage/spg_data_fill$main.coverage" NAME="main Coverage Results" MODIFIED="1709447731753" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
-    <SUITE FILE_PATH="coverage/spg_data_fill$main_.coverage" NAME="main_ Coverage Results" MODIFIED="1709447698591" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
-    <SUITE FILE_PATH="coverage/spg$main.coverage" NAME="main Coverage Results" MODIFIED="1709141994702" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
-    <SUITE FILE_PATH="coverage/spg_data_fill$temp_tester.coverage" NAME="temp_tester Coverage Results" MODIFIED="1709203331233" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/spg$main.coverage" NAME="main Coverage Results" MODIFIED="1709153814950" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="C:\Users\yoela\PycharmProjects\spg\src" />
   </component>
 </project>

@@ -377,7 +377,7 @@ def plot_scatter_with_divisions(name: str, rates: list, k: int = 3):
         print(f"rate: {rate}")
         data, mask = df.remove_random_cells(data_.copy(), rate)
 
-        data = test_regression_features_(data)
+        data = test_regression_features_(data).iloc[:, :-1]
         data = data.drop(data.columns[-1], axis=1)
 
         dists = calc_l2(data)
@@ -582,7 +582,7 @@ def test_knn_foreach_feature_(name: str, rate: float, ):
 
     edges = np.unique(np.array(edges), axis=0)
 
-    x_reg = test_regression_features_(data.copy(), )
+    x_reg = test_regression_features_(data.copy(), ).iloc[:, :-1]
 
     dists_ = calc_l2(x_reg).iloc[:, :-1]
     edges_l2 = mg.get_knn_edges(dists_, 40)
@@ -735,7 +735,7 @@ def plot_correct_graphs(name: str, rates: list, iters: int = 25,):
     """
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    if name in ["Cora", "Citeseer", "Pubmed"]:  # we have the correct edges.
+    if name in ["Cora", "CiteSeer", "Pubmed"]:  # we have the correct edges.
         data_, _ = df.get_dataset(name)
         data = data_.data
         data_original = pd.concat([pd.DataFrame(data.x.cpu().detach().numpy()), pd.DataFrame(data.y)], axis=1)
@@ -752,7 +752,7 @@ def plot_correct_graphs(name: str, rates: list, iters: int = 25,):
         # calculate distances on full data.
         distances_full = calc_l2(x_)
         # use knn method to find the nodes between which the distances are smallest.
-        _edges = df.get_knn_edges(distances=distances_full, k=5)
+        _edges = df.get_knn_edges(distances=distances_full, k=40)
 
     # test on full data.
     true_score = 0
@@ -770,7 +770,7 @@ def plot_correct_graphs(name: str, rates: list, iters: int = 25,):
         for i in range(iters):
             print(f"\tIteration: {i + 1}")
 
-            if name in ["Cora", "Citeseer", "Pubmed"]:
+            if name in ["Cora", "CiteSeer", "Pubmed"]:
                 dataset, _ = df.get_dataset(name)
                 data = dataset.data
                 n_nodes, n_features = data.x.shape

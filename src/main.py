@@ -1,10 +1,11 @@
 from src.temp_tester import *
-import pandas as pd
-import build_classifier as classify
-from sklearn.model_selection import train_test_split
 import warnings
 
 warnings.filterwarnings("ignore")
+
+CITE_FP_SCORES = [0.6732, 0.6677, 0.6781, 0.671, 0.6735, 0.6555, 0.6503, 0.6532, 0.6535]
+PUBMED_FP_SCORES = [0.7589, 0.7548, 0.7563, 0.7472, 0.7491, 0.7511, 0.7513, 0.749, 0.7447]
+CORA_FP_SCORES = [0.8089, 0.8008, 0.8053, 0.7961, 0.7998, 0.7992, 0.7947, 0.7925, 0.7829]
 
 REMOVED_PERCENTAGES = [.1, .2, .3, .4, .5, .6, .7, .8, .9]
 
@@ -45,13 +46,11 @@ if __name__ == '__main__':
     # fix labels in all data so the labels range from 0 to the number of classes.
     # first get a list of every file in the directory.
 
-    names = ["Redwine", "Whitewine", "Sonar"]
+    names = ["Banknote", "sonar", "RedWine", "WhiteWine"]
 
     for name in names:
         print(name)
         get_best_constants(name, REMOVED_PERCENTAGES)
-
-    # get_best_constants(name, REMOVED_PERCENTAGES)
 
 # TODO- fix the issue with datasets.
 # TODO- update the readme file.

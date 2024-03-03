@@ -358,7 +358,7 @@ def metric_by_feature(data: pd.DataFrame, idx: int):
     return dists
 
 
-def make_feature_edges(data: pd.DataFrame):
+def make_feature_edges(data: pd.DataFrame,):
     """
     This method takes a dataset with missing values, and using the metric_by_feature method, it creates a "knn" graph
     for each feature, then intersect it with the knn graph of the linear regression filled data to get the edges.
@@ -376,16 +376,6 @@ def make_feature_edges(data: pd.DataFrame):
         edges.extend(knn_edges)
 
     edges = np.unique(edges, axis=0)
-    x_reg = lin_reg(data.copy(), ).iloc[:, :-1]
-
-    dists_ = calc_l2(x_reg)
-    edges_l2 = get_knn_edges(dists_, 40)
-
-    # intersect edges and edges_l2.
-    edges_l2 = edges_l2.t().numpy()
-    edges_l2 = np.unique(edges_l2, axis=0)
-    edges = np.unique(edges, axis=0)
-    edges = np.array(list(find_intersection(edges, edges_l2)))
 
     edges = torch.tensor(edges).t().long()
 
@@ -533,7 +523,8 @@ def remove_and_fill(data_name, missing_rate: float = 0.1,):
     y = torch.from_numpy(data.iloc[:, -1].values.astype(np.int64)).to(device)
 
     # filling data.
-    edges = make_feature_edges(data)
+    dists = get_custom_distances(x)  # get distances.
+    edges = get_knn_edges(dists, k=40)
     x = torch.from_numpy(x.values.astype(np.float32)).to(device)
 
     model = FeaturePropagation(num_iterations=40)

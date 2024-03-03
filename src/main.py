@@ -9,11 +9,11 @@ PERCENTAGES = [int(100 * x) for x in REMOVED_PERCENTAGES]
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
 
-    names = ["Redwine", "Whitewine"]
+    names = ["Banknote", "Sonar", "Redwine", "Whitewine"]
 
     for name in names:
         print(name)
-        get_best_constants(name, REMOVED_PERCENTAGES)
+        test_spagog_results(name, REMOVED_PERCENTAGES)
 
 # TODO- fix the issue with datasets.
 # TODO- update the readme file.

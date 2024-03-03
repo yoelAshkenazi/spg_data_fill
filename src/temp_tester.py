@@ -236,7 +236,7 @@ def get_best_constants(name: str, rates: list, iters: int = 25):
             initial_params = np.array([1, 1])
 
             # optimize c1, c2, using nedler-mead.
-            res = minimize(d_params, initial_params, method="Nelder-Mead",)
+            res = minimize(d_params, initial_params, method="Nelder-Mead", )
 
             temp_params[i] = res.x
 
@@ -707,7 +707,7 @@ def test_knn_foreach_feature(name: str, rates: list, iters: int = 25):
     dct.to_csv(f"table_to_graph_results/knn_foreach_{name}.csv")
 
 
-def plot_correct_graphs(name: str, rates: list, iters: int = 25,):
+def plot_correct_graphs(name: str, rates: list, iters: int = 25, ):
     """
     This method plots the xgb results for the filled data using the true edges, compared with the results of the full
     data.
@@ -781,26 +781,26 @@ def plot_correct_graphs(name: str, rates: list, iters: int = 25,):
                     scores[rate] = [d]
 
                 continue
-
-            data, mask = df.remove_random_cells(data_.copy(), rate)
-            data = df.z_score(data)
-            unfilled_x = data.copy().drop(data.columns[-1], axis=1)
-            y_ = data.iloc[:, -1].copy()
-
-            unfilled_x = torch.from_numpy(unfilled_x.values.astype(np.float32)).to(device)
-            y_ = torch.from_numpy(y_.values.astype(np.int64)).to(device)
-
-            # Filling the data using the true edges.
-
-            filling_true = filling("feature_propagation", _edges, unfilled_x, mask, 40, )
-
-            filled_true = pd.concat([pd.DataFrame(filling_true.cpu().numpy()), pd.DataFrame(y_)], axis=1)
-            train_true, test_true = train_test_split(filled_true, test_size=0.2)
-            _, d = classify.run_xgb(train_true, test_true)
-            if rate in scores:
-                scores[rate].append(d)
             else:
-                scores[rate] = [d]
+                data, mask = df.remove_random_cells(data_.copy(), rate)
+                data = df.z_score(data)
+                unfilled_x = data.copy().drop(data.columns[-1], axis=1)
+                y_ = data.iloc[:, -1].copy()
+
+                unfilled_x = torch.from_numpy(unfilled_x.values.astype(np.float32)).to(device)
+                y_ = torch.from_numpy(y_.values.astype(np.int64)).to(device)
+
+                # Filling the data using the true edges.
+
+                filling_true = filling("feature_propagation", _edges, unfilled_x, mask, 40, )
+
+                filled_true = pd.concat([pd.DataFrame(filling_true.cpu().numpy()), pd.DataFrame(y_)], axis=1)
+                train_true, test_true = train_test_split(filled_true, test_size=0.2)
+                _, d = classify.run_xgb(train_true, test_true)
+                if rate in scores:
+                    scores[rate].append(d)
+                else:
+                    scores[rate] = [d]
 
     # plot the results.
     avs = [np.mean(scores[rate]) for rate in rates]
@@ -841,7 +841,7 @@ def plot_incorrect_graphs(name: str, rates: list, iters: int = 25):
     heur_scores = {}
     unfilled_scores = {}
 
-    for rate in rates:
+    for j, rate in enumerate(rates):
         for i in range(iters):
 
             # remove data.
@@ -860,7 +860,7 @@ def plot_incorrect_graphs(name: str, rates: list, iters: int = 25):
             params = pd.read_csv(f"heur_dists_params/params_{name}.csv").values  # get the params for this dataset.
 
             f_f, xor_vals = find_missing_masks(x)  # find the masks.
-            dists_heur = heur_dist_metric(dists_l2, f_f, xor_vals, params[rate])
+            dists_heur = heur_dist_metric(dists_l2, f_f, xor_vals, params.columns[j])
             edges_heur = df.get_knn_edges(dists_heur, 40)
 
             # fill the data.
@@ -920,18 +920,85 @@ def plot_incorrect_graphs(name: str, rates: list, iters: int = 25):
 
 def test_spagog_results(name: str, rates: list, iters: int = 25):
     """
-    this method tests the spagog method on the given dataset.
+    this method tests the spagog method on the given dataset. This method assume tabular dataset.
     :param name: name of dataset.
     :param rates: rate of missing values.
     :param iters: number of iterations for each rate.
     :return:
     """
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # initialize the results.
+    gcnc_scores = {}
+    gnc_scores = {}
+    gc_scores = {}
+    unfilled = {}
 
-    results = {}
+    # get the dataset.
+    data_ = df.get_dataset(name)
+    data_ = shuffle(data_)
+    data_ = df.z_score(data_)
 
-    if name not in ["Cora", "CiteSeer", "Pubmed"]:  # the data is tabular.
-        data_ = df.get_dataset(name)
-        data_ = shuffle(data_)
-        data_ = df.z_score(data_)
+    for rate in rates:
+        print(f"Rate: {rate}")
+        for i in range(iters):
+            print(f"\tIteration: {i + 1}")
+            data, mask = df.remove_random_cells(data_.copy(), rate)
+            data = df.z_score(data)
+            # divide into train, val, test.
+            t, test = train_test_split(data, test_size=0.2)
 
+            # save the unfilled results.
+            if rate in unfilled:
+                unfilled[rate].append(classify.run_xgb(t, test)[1])
+            else:
+                unfilled[rate] = [classify.run_xgb(t, test)[1]]
+
+            train, val = train_test_split(t, test_size=0.2)
+            # separate the features and the labels.
+            x_train = train.drop(train.columns[-1], axis=1)
+            y_train = train.iloc[:, -1].copy()
+            x_val = val.drop(val.columns[-1], axis=1)
+            y_val = val.iloc[:, -1].copy()
+            x_test = test.drop(test.columns[-1], axis=1)
+            y_test = test.iloc[:, -1].copy()
+            # run spagog.
+            gcnc_y_preds, gcnc_res_cache = gog_model(model="gc+nc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                                     val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+            gnc_y_preds, gnc_res_cache = gog_model(model="gnc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                                   val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+            gc_y_preds, gc_res_cache = gog_model(model="gc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                                 val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+            # save the results.
+            gcnc_auc = gcnc_res_cache["Test AUC"]
+            gnc_auc = gnc_res_cache["Test AUC"]
+            gc_auc = gc_res_cache["Test AUC"]
+
+            if rate in gcnc_scores:
+                gcnc_scores[rate].append(gcnc_auc)
+                gnc_scores[rate].append(gnc_auc)
+                gc_scores[rate].append(gc_auc)
+            else:
+                gcnc_scores[rate] = [gcnc_auc]
+                gnc_scores[rate] = [gnc_auc]
+                gc_scores[rate] = [gc_auc]
+
+    # plot the results.
+    avs0 = [np.mean(unfilled[rate]) for rate in rates]
+    stds0 = [np.std(unfilled[rate]) / np.sqrt(iters) for rate in rates]
+    avs1 = [np.mean(gcnc_scores[rate]) for rate in rates]
+    stds1 = [np.std(gcnc_scores[rate]) / np.sqrt(iters) for rate in rates]
+    avs2 = [np.mean(gnc_scores[rate]) for rate in rates]
+    stds2 = [np.std(gnc_scores[rate]) / np.sqrt(iters) for rate in rates]
+    avs3 = [np.mean(gc_scores[rate]) for rate in rates]
+    stds3 = [np.std(gc_scores[rate]) / np.sqrt(iters) for rate in rates]
+
+    plt.errorbar(rates, avs0, stds0, label="Unfilled")
+    plt.errorbar(rates, avs1, stds1, label="GC+NC")
+    plt.errorbar(rates, avs2, stds2, label="GNC")
+    plt.errorbar(rates, avs3, stds3, label="GC")
+    plt.xlabel("Rate of missing values")
+    plt.ylabel("AUC score")
+    plt.legend()
+    plt.grid()
+    plt.title(f"Spagog in {name}")
+    plt.savefig(f"table_to_graph_plots/Spagog/{name}.png")
+    plt.show()

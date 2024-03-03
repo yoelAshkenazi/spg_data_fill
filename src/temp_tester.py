@@ -860,7 +860,7 @@ def plot_incorrect_graphs(name: str, rates: list, iters: int = 25):
             params = pd.read_csv(f"heur_dists_params/params_{name}.csv").values  # get the params for this dataset.
 
             f_f, xor_vals = find_missing_masks(x)  # find the masks.
-            dists_heur = heur_dist_metric(dists_l2, f_f, xor_vals, params.columns[j])
+            dists_heur = heur_dist_metric(dists_l2, f_f, xor_vals, params[j])
             edges_heur = df.get_knn_edges(dists_heur, 40)
 
             # fill the data.

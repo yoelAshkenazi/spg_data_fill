@@ -1,3 +1,5 @@
+import pandas as pd
+
 from src import build_classifier as classify
 import data_filler as df
 from fp_builds.filling_strategies import filling
@@ -821,10 +823,11 @@ def plot_correct_graphs(name: str, rates: list, iters: int = 25, ):
     plt.show()
 
 
-def plot_incorrect_graphs(name: str, rates: list, iters: int = 25):
+def plot_incorrect_graphs(name: str, rates: list, params: pd.DataFrame, iters: int = 25):
     """
     This method plots the xgb results for the unfilled data, and the data filled with l2 edges and optimized heuristic
     edges.
+    :param params: coefficients for the heuristic metric.
     :param name: name of the dataset. The assumption is tabular data.
     :param rates: rates of missing values.
     :param iters: number of iterations per rate.
@@ -842,7 +845,10 @@ def plot_incorrect_graphs(name: str, rates: list, iters: int = 25):
     unfilled_scores = {}
 
     for j, rate in enumerate(rates):
+        print(f"Rate: {rate}")
         for i in range(iters):
+
+            print(f"\tIteration: {i + 1}")
 
             # remove data.
             data, mask = df.remove_random_cells(data_.copy(), rate)
@@ -856,11 +862,8 @@ def plot_incorrect_graphs(name: str, rates: list, iters: int = 25):
             dists_l2 = calc_l2(x)
             edges_l2 = mg.get_knn_edges(dists_l2, 40)
 
-            # calculate heur edges using the params.
-            params = pd.read_csv(f"heur_dists_params/params_{name}.csv").values  # get the params for this dataset.
-
             f_f, xor_vals = find_missing_masks(x)  # find the masks.
-            dists_heur = heur_dist_metric(dists_l2, f_f, xor_vals, params[j])
+            dists_heur = heur_dist_metric(dists_l2, f_f, xor_vals, params.iloc[:, j].values)
             edges_heur = df.get_knn_edges(dists_heur, 40)
 
             # fill the data.
@@ -913,6 +916,8 @@ def plot_incorrect_graphs(name: str, rates: list, iters: int = 25):
     plt.grid()
     plt.title(f"FP with L2 and Heur edges in {name}")
     plt.savefig(f"table_to_graph_plots/Metric Graphs/{name}.png")
+    plt.show()
+    plt.clf()
 
 
 # TODO- test the last method.
@@ -936,6 +941,10 @@ def test_spagog_results(name: str, rates: list, iters: int = 25):
     data_ = df.get_dataset(name)
     data_ = shuffle(data_)
     data_ = df.z_score(data_)
+
+    # save score for full data.
+    f_train, f_test = train_test_split(data_, test_size=0.2)
+    full_score = classify.run_xgb(f_train, f_test)[1]
 
     for rate in rates:
         print(f"Rate: {rate}")
@@ -991,10 +1000,11 @@ def test_spagog_results(name: str, rates: list, iters: int = 25):
     avs3 = [np.mean(gc_scores[rate]) for rate in rates]
     stds3 = [np.std(gc_scores[rate]) / np.sqrt(iters) for rate in rates]
 
-    plt.errorbar(rates, avs0, stds0, label="Unfilled")
-    plt.errorbar(rates, avs1, stds1, label="GC+NC")
-    plt.errorbar(rates, avs2, stds2, label="GNC")
-    plt.errorbar(rates, avs3, stds3, label="GC")
+    plt.axhline(y=full_score, color="r", linestyle="--", label="Full data")  # plot the full data score.
+    plt.errorbar(rates, avs0, stds0, label="Unfilled")  # plot the unfilled data score.
+    plt.errorbar(rates, avs1, stds1, label="GC+NC")  # plot the gc+nc score.
+    plt.errorbar(rates, avs2, stds2, label="GNC")  # plot the gnc score.
+    plt.errorbar(rates, avs3, stds3, label="GC")  # plot the gc score.
     plt.xlabel("Rate of missing values")
     plt.ylabel("AUC score")
     plt.legend()

@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     for name in names:
         print(name)
-        test_spagog_results(name, REMOVED_PERCENTAGES)
+        test_spagog_results(name, REMOVED_PERCENTAGES, iters=10)
 
 # TODO- fix the issue with datasets.
 # TODO- update the readme file.

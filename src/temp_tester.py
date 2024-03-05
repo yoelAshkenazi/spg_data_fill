@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from src import build_classifier as classify
@@ -923,19 +924,17 @@ def plot_incorrect_graphs(name: str, rates: list, params: pd.DataFrame, iters: i
 # TODO- test the last method.
 
 
-def test_spagog_results(name: str, rates: list, iters: int = 25):
+def test_spagog_results(name: str, rates: list, iters: int = 25, model_name: str = ""):
     """
     this method tests the spagog method on the given dataset. This method assume tabular dataset.
     :param name: name of dataset.
     :param rates: rate of missing values.
     :param iters: number of iterations for each rate.
+    :param model_name: the name of the model to run.
     :return:
     """
     # initialize the results.
-    gcnc_scores = {}
-    gnc_scores = {}
-    gc_scores = {}
-    unfilled = {}
+    results = {}
 
     # get the dataset.
     data_ = df.get_dataset(name)
@@ -946,69 +945,73 @@ def test_spagog_results(name: str, rates: list, iters: int = 25):
     f_train, f_test = train_test_split(data_, test_size=0.2)
     full_score = classify.run_xgb(f_train, f_test)[1]
 
+    print("Model: ", model_name)
     for rate in rates:
         print(f"Rate: {rate}")
-        for i in range(iters):
-            print(f"\tIteration: {i + 1}")
+        i = 0
+        redos = 0
+        while i < iters and redos < 5:
+            print(f"\tIteration: {i + 1}", end="")
+            if redos > 0:
+                print(f", redo: {redos}", end="")
+            print()
             data, mask = df.remove_random_cells(data_.copy(), rate)
             data = df.z_score(data)
             # divide into train, val, test.
             t, test = train_test_split(data, test_size=0.2)
 
             # save the unfilled results.
-            if rate in unfilled:
-                unfilled[rate].append(classify.run_xgb(t, test)[1])
-            else:
-                unfilled[rate] = [classify.run_xgb(t, test)[1]]
+            if model_name == "":
+                if rate in results:
+                    results[rate].append(classify.run_xgb(t, test)[1])
+                else:
+                    results[rate] = [classify.run_xgb(t, test)[1]]
+
+                continue
 
             train, val = train_test_split(t, test_size=0.2)
             # separate the features and the labels.
-            x_train = train.drop(train.columns[-1], axis=1)
+            x_train = train.iloc[:, :-1].copy()
             y_train = train.iloc[:, -1].copy()
-            x_val = val.drop(val.columns[-1], axis=1)
+            x_val = val.iloc[:, :-1].copy()
             y_val = val.iloc[:, -1].copy()
-            x_test = test.drop(test.columns[-1], axis=1)
+            x_test = test.iloc[:, :-1].copy()
             y_test = test.iloc[:, -1].copy()
-            # run spagog.
-            gcnc_y_preds, gcnc_res_cache = gog_model(model="gc+nc", train_X=x_train, train_Y=y_train, val_X=x_val,
-                                                     val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
-            gnc_y_preds, gnc_res_cache = gog_model(model="gnc", train_X=x_train, train_Y=y_train, val_X=x_val,
-                                                   val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
-            gc_y_preds, gc_res_cache = gog_model(model="gc", train_X=x_train, train_Y=y_train, val_X=x_val,
-                                                 val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
-            # save the results.
-            gcnc_auc = gcnc_res_cache["Test AUC"]
-            gnc_auc = gnc_res_cache["Test AUC"]
-            gc_auc = gc_res_cache["Test AUC"]
 
-            if rate in gcnc_scores:
-                gcnc_scores[rate].append(gcnc_auc)
-                gnc_scores[rate].append(gnc_auc)
-                gc_scores[rate].append(gc_auc)
+            if model_name == "gc+nc":
+                # run spagog.
+                y_preds, res_cache = gog_model(model="gc+nc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                               val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+            elif model_name == "gnc":
+                # run spagog.
+                y_preds, res_cache = gog_model(model="gnc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                               val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+            elif model_name == "gc":
+                # run spagog.
+                y_preds, res_cache = gog_model(model="gc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                               val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
             else:
-                gcnc_scores[rate] = [gcnc_auc]
-                gnc_scores[rate] = [gnc_auc]
-                gc_scores[rate] = [gc_auc]
+                raise ValueError("Invalid model name.")
 
-    # plot the results.
-    avs0 = [np.mean(unfilled[rate]) for rate in rates]
-    stds0 = [np.std(unfilled[rate]) / np.sqrt(iters) for rate in rates]
-    avs1 = [np.mean(gcnc_scores[rate]) for rate in rates]
-    stds1 = [np.std(gcnc_scores[rate]) / np.sqrt(iters) for rate in rates]
-    avs2 = [np.mean(gnc_scores[rate]) for rate in rates]
-    stds2 = [np.std(gnc_scores[rate]) / np.sqrt(iters) for rate in rates]
-    avs3 = [np.mean(gc_scores[rate]) for rate in rates]
-    stds3 = [np.std(gc_scores[rate]) / np.sqrt(iters) for rate in rates]
+            if len(np.unique(y_test)) == 2:
+                score = res_cache["Test AUC"]
+                if score == 0.5:
+                    redos += 1
+                    continue
+                else:
+                    redos = 0
+            else:
+                score = res_cache["Test Acc"]
 
-    plt.axhline(y=full_score, color="r", linestyle="--", label="Full data")  # plot the full data score.
-    plt.errorbar(rates, avs0, stds0, label="Unfilled")  # plot the unfilled data score.
-    plt.errorbar(rates, avs1, stds1, label="GC+NC")  # plot the gc+nc score.
-    plt.errorbar(rates, avs2, stds2, label="GNC")  # plot the gnc score.
-    plt.errorbar(rates, avs3, stds3, label="GC")  # plot the gc score.
-    plt.xlabel("Rate of missing values")
-    plt.ylabel("AUC score")
-    plt.legend()
-    plt.grid()
-    plt.title(f"Spagog in {name}")
-    plt.savefig(f"table_to_graph_plots/Spagog/{name}.png")
-    plt.show()
+            if rate in results:
+                results[rate].append(score)
+            else:
+                results[rate] = [score]
+
+            i += 1
+
+    # return the results.
+    avs = [np.mean(results[rate]) for rate in rates]
+    stes = [np.std(results[rate]) / np.sqrt(iters) for rate in rates]
+
+    return full_score, avs, stes

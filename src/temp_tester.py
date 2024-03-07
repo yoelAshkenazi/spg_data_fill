@@ -950,7 +950,7 @@ def test_spagog_results(name: str, rates: list, iters: int = 25, model_name: str
         print(f"Rate: {rate}")
         i = 0
         redos = 0
-        while i < iters and redos < 5:
+        while i < iters and redos < 10:
             print(f"\tIteration: {i + 1}", end="")
             if redos > 0:
                 print(f", redo: {redos}", end="")
@@ -961,12 +961,13 @@ def test_spagog_results(name: str, rates: list, iters: int = 25, model_name: str
             t, test = train_test_split(data, test_size=0.2)
 
             # save the unfilled results.
-            if model_name == "":
+            if model_name == "unfilled":
                 if rate in results:
                     results[rate].append(classify.run_xgb(t, test)[1])
                 else:
                     results[rate] = [classify.run_xgb(t, test)[1]]
 
+                i += 1
                 continue
 
             train, val = train_test_split(t, test_size=0.2)
@@ -993,15 +994,12 @@ def test_spagog_results(name: str, rates: list, iters: int = 25, model_name: str
             else:
                 raise ValueError("Invalid model name.")
 
-            if len(np.unique(y_test)) == 2:
-                score = res_cache["Test AUC"]
-                if score == 0.5:
-                    redos += 1
-                    continue
-                else:
-                    redos = 0
+            score = res_cache["Test AUC"]
+            if score == 0.5:
+                redos += 1
+                continue
             else:
-                score = res_cache["Test Acc"]
+                redos = 0
 
             if rate in results:
                 results[rate].append(score)
@@ -1010,8 +1008,11 @@ def test_spagog_results(name: str, rates: list, iters: int = 25, model_name: str
 
             i += 1
 
+        if redos == 10:
+            results[rate] = np.nan
+
     # return the results.
-    avs = [np.mean(results[rate]) for rate in rates]
-    stes = [np.std(results[rate]) / np.sqrt(iters) for rate in rates]
+    avs = [np.mean(results[rate]) if results[rate] != np.nan else np.nan for rate in rates]
+    stes = [np.std(results[rate]) / np.sqrt(iters) if results[rate] != np.nan else np.nan for rate in rates]
 
     return full_score, avs, stes

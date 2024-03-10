@@ -981,24 +981,40 @@ def test_spagog_results(name: str, rates: list, iters: int = 25, model_name: str
 
             if model_name == "gc+nc":
                 # run spagog.
-                y_preds, res_cache = gog_model(model="gc+nc", train_X=x_train, train_Y=y_train, val_X=x_val,
-                                               val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+                try:
+                    y_preds, res_cache = gog_model(model="gc+nc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                                   val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+                except ValueError:
+                    redos += 1
+                    continue
             elif model_name == "gnc":
                 # run spagog.
-                y_preds, res_cache = gog_model(model="gnc", train_X=x_train, train_Y=y_train, val_X=x_val,
-                                               val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+                try:
+                    y_preds, res_cache = gog_model(model="gnc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                                   val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+                except ValueError:
+                    redos += 1
+                    continue
             elif model_name == "gc":
                 # run spagog.
-                y_preds, res_cache = gog_model(model="gc", train_X=x_train, train_Y=y_train, val_X=x_val,
-                                               val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+                try:
+                    y_preds, res_cache = gog_model(model="gc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                                   val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+                except ValueError:
+                    redos += 1
+                    continue
             else:
                 raise ValueError("Invalid model name.")
 
-            score = res_cache["Test AUC"]
-            if score == 0.5:
-                redos += 1
-                continue
+            if len(np.unique(y_test)) == 2:
+                score = res_cache["Test AUC"]
+                if score == 0.5:
+                    redos += 1
+                    continue
+                else:
+                    redos = 0
             else:
+                score = res_cache["Test Acc"]
                 redos = 0
 
             if rate in results:

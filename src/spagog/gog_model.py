@@ -39,6 +39,8 @@ def gog_model(
     f2m: bool = False,
     find_beta: bool = False,
     n_gcn_layers: int = 1,
+    fill_data_method: str = "gfp",
+    track_loss: bool = False,
     **spec_params,
 ):
     assert (
@@ -118,6 +120,8 @@ def gog_model(
         "to_numpy": to_numpy,
         "f2m": f2m,
         "n_gcn_layers": n_gcn_layers,
+        "fill_method": fill_data_method,
+        "track_loss": track_loss,
     }
 
     if model == "gnc":
@@ -175,6 +179,7 @@ def gog_model(
         print(f"All program last {_min} minutes and {_sec} seconds.")
 
     if evaluate_metrics:
+
         return y_test, res_cache
 
     return y_test

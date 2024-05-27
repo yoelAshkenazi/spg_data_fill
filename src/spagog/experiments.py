@@ -24,14 +24,17 @@ def run_gc(
     to_numpy: bool = True,
     f2m: bool = False,
     n_gcn_layers: int = 1,
+    fill_method: str = "gfp",
+    track_loss: bool = False,
 ):
     graphs_dataset, *_ = GraphsDataset.from_tab(
         tab_data=tab_dataset,
         inter_sample_edges=inter_sample_edges,
         knn_kwargs={
             "distance": params.get("distance", "heur_dist"),
-            "k": params.get("k", 3),
+            "k": params.get("k", 30),
         },
+        filling_method=fill_method,
         calc_intra_edges=True,
         f2m=f2m
     )
@@ -71,8 +74,9 @@ def run_gc(
         verbose=verbose,
         weight_decay=params.get("weight_decay", 0.001),
         dataset_name=tab_dataset.name,
+        track_loss=track_loss,
     )
-
+    cache["gc_train_loss"] = None
     y_test = model.predict(test_loader, probs=False, to_numpy=to_numpy)
 
     if evaluate_metrics and verbose == 1:
@@ -96,7 +100,9 @@ def run_gnc(
     to_numpy: bool = True,
     f2m: bool = False,
     find_beta: bool = False,
+    fill_method: str = "gfp",
     n_gcn_layers: int = 1,
+    track_loss: bool = False,
 ):
     graphs_dataset, inter_samples_edges, masks = GraphsDataset.from_tab(
         tab_data=tab_dataset,
@@ -105,6 +111,7 @@ def run_gnc(
             "k": params.get("k", 30),
         },
         inter_sample_edges=inter_sample_edges,
+        filling_method=fill_method,
         calc_intra_edges=True,
         f2m=f2m
     )
@@ -158,6 +165,7 @@ def run_gnc(
             verbose=verbose,
             weight_decay=gc_params.get("weight_decay", 0.001),
             dataset_name=tab_dataset.name,
+            track_loss=track_loss,
         )
 
     else:
@@ -242,6 +250,8 @@ def run_gc_nc(
     to_numpy: bool = True,
     f2m: bool = False,
     n_gcn_layers: int = 1,
+    fill_method: str = "gfp",
+    track_loss: bool = False,
 ):
     graphs_dataset, inter_sample_edges, masks = GraphsDataset.from_tab(
         tab_data=tab_dataset,
@@ -251,6 +261,7 @@ def run_gc_nc(
         },
         inter_sample_edges=inter_sample_edges,
         calc_intra_edges=True,
+        filling_method=fill_method,
         f2m=f2m
     )
 
@@ -279,7 +290,7 @@ def run_gc_nc(
 
     gc_early_stopping = params.get("gc_early_stopping", 30)
 
-    _ = gc_model.fit(
+    cache_ = gc_model.fit(
         train_loader=train_graphs_loader,
         val_loader=val_graphs_loader,
         test_loader=test_graphs_loader,
@@ -289,8 +300,9 @@ def run_gc_nc(
         verbose=verbose,
         weight_decay=params.get("gc_weight_decay", 0),
         dataset_name=tab_dataset.name,
+        track_loss=track_loss,
     )
-
+    gc_train_loss = cache_["loss track"]
     def extract_embeddings(graphs_loader):
         if graphs_loader is None:
             return None
@@ -401,8 +413,9 @@ def run_gc_nc(
         verbose=verbose,
         dataset_name=graphs_dataset.name.replace("graphs", "graph"),
         labels_from_loader=lambda x: x[0][1],
+        track_loss=track_loss,
     )
-
+    cache["gc_train_loss"] = gc_train_loss
     y_test = nc_model.predict(test_graph, probs=False, to_numpy=to_numpy)
 
     if evaluate_metrics and verbose == 1:

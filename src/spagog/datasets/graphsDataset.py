@@ -111,7 +111,8 @@ class GraphsDataset:
 
     @classmethod
     def from_tab(
-            cls, tab_data: TabDataset, inter_sample_edges: torch.Tensor = None, calc_intra_edges: bool = True, **kwargs
+            cls, tab_data: TabDataset, inter_sample_edges: torch.Tensor = None, calc_intra_edges: bool = True,
+            filling_method: str = "gfp", **kwargs
     ):
         is_graph = inter_sample_edges is not None
         test_y_given = tab_data.test.Y is not None
@@ -130,6 +131,7 @@ class GraphsDataset:
                 val_mask=val_mask,
                 test_mask=test_mask,
                 include_edge_weights=True,
+                fill_data_method=filling_method,
                 inter_sample_edges=inter_sample_edges,
                 name=tab_data.name.split('-')[0].lower(),
                 calc_intra_edges=calc_intra_edges,

@@ -292,6 +292,22 @@ def calc_l2(data: pd.DataFrame):
     return dists
 
 
+def calc_l2_space_saver(data: pd.DataFrame):
+    """
+    This method calculates the L2 distances between rows in the data when NaN values are replaced with 0.
+    :param data: the data.
+    :return: matrix of distances.
+    """
+    data = data.fillna(0)
+    dists = np.zeros((data.shape[0], data.shape[0]))
+    for i in range(data.shape[0]):
+        for j in range(i + 1, data.shape[0]):
+            dists[i, j] = np.linalg.norm(data.values[i] - data.values[j])
+            dists[j, i] = dists[i, j]
+
+    return dists
+
+
 def find_intersection(a: np.ndarray, b: np.ndarray):
     """
     this method takes in two matrices and returns a set of the row-wise intersection between a and b.
@@ -454,6 +470,21 @@ def fill_data(data_name):
     x = FeaturePropagation(num_iterations=40).propagate(x, edges, mask)  # fill data.
 
     return pd.concat([pd.DataFrame(x.cpu().detach().numpy()), pd.DataFrame(y)], axis=1)  # return filled data.
+
+
+def fill(data: pd.DataFrame, mask: torch.Tensor, edges: torch.Tensor):
+    """
+    this method takes the dataset, the mask, and the edges, and fills the missing values in the dataset.
+    :param data: the dataset.
+    :param mask: the mask.
+    :param edges: the edges.
+    :return: the filled dataset.
+    """
+
+    data = torch.from_numpy(data.values.astype(np.float32))
+    data = FeaturePropagation(num_iterations=40).propagate(data, edges, mask)
+
+    return pd.DataFrame(data.cpu().detach().numpy())
 
 
 # remove data and fill using FP.

@@ -139,6 +139,7 @@ class AbstractNN(nn.Module, AbstractModel):
         metric: str = "auc",
         save_model: bool = False,
         early_stopping: int = -1,
+        track_loss: bool = False,
     ):
         assert metric in ["auc", "accuracy"]
 
@@ -178,7 +179,6 @@ class AbstractNN(nn.Module, AbstractModel):
 
                 t_only_pass_train.append(time.time() - t_opt)
 
-
                 loss = self._eval_loss(
                     output,
                     labels,
@@ -196,6 +196,8 @@ class AbstractNN(nn.Module, AbstractModel):
 
             t_per_train_epoch.append(time.time() - t_train)
             total_train_loss = total_train_loss / (len(train_loader.dataset) if isinstance(train_loader, DataLoader) else train_loader[0][1].shape[0])
+
+            train_losses.append(total_train_loss)  # add the loss to the list
 
             train_auc = self.evaluate(
                 loader=train_loader,
@@ -275,6 +277,7 @@ class AbstractNN(nn.Module, AbstractModel):
             to_numpy=False,
         )
 
+        results_cache["loss track"] = train_losses if track_loss else None
         results_cache["learning_epochs"] = epoch
         results_cache["Train AUC"] = train_auc
         results_cache["Val AUC"] = None if val_loader is None else val_auc

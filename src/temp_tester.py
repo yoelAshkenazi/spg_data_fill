@@ -6,12 +6,14 @@ import data_filler as df
 from fp_builds.filling_strategies import filling
 from fp_builds import make_graph as mg
 from fp_builds import utils
-# from sklearn.utils import shuffle
 from src.data_filler import *
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from sklearn.linear_model import LinearRegression
-from spagog.gog_model import gog_model
+from src.spagog.gog_model import gog_model
+import seaborn as sns
+from sklearn.metrics import confusion_matrix
+import torch.nn as nn
 
 
 def test_data(name: str):
@@ -921,29 +923,42 @@ def plot_incorrect_graphs(name: str, rates: list, params: pd.DataFrame, iters: i
     plt.clf()
 
 
-# TODO- test the last method.
-
-
-def test_spagog_results(name: str, rates: list, iters: int = 25, model_name: str = ""):
+def test_spagog_results(name: str, rates: list, iters: int = 10, model_name: str = "", add_full_score: bool = True,
+                        track_loss: bool = False, check_heatmap: bool = False):
     """
     this method tests the spagog method on the given dataset. This method assume tabular dataset.
     :param name: name of dataset.
     :param rates: rate of missing values.
     :param iters: number of iterations for each rate.
     :param model_name: the name of the model to run.
+    :param add_full_score: whether to add the full score to the results.
+    :param track_loss: whether to track the loss.
+    :param check_heatmap: whether to check the heatmap in multiclass case.
     :return:
     """
     # initialize the results.
     results = {}
 
     # get the dataset.
-    data_ = df.get_dataset(name)
-    data_ = shuffle(data_)
-    data_ = df.z_score(data_)
+    if name in ["Redwine", "Banknote", "Sonar"]:
+        data = pd.read_csv(f"data/{name}.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+    else:
+        train = pd.read_csv(f"data/Tabular/{name}/processed/full/train.csv")
+        val = pd.read_csv(f"data/Tabular/{name}/processed/full/val.csv")
+        test = pd.read_csv(f"data/Tabular/{name}/processed/full/test.csv")
+
+        # concatenate the data.
+        full_data = pd.concat([train, val, test])
+        full_data = shuffle(full_data)
+        full_data = df.z_score(full_data)
+    data_ = full_data
 
     # save score for full data.
-    f_train, f_test = train_test_split(data_, test_size=0.2)
-    full_score = classify.run_xgb(f_train, f_test)[1]
+    if add_full_score:
+        f_train, f_test = train_test_split(data_, test_size=0.2)
+        full_score = classify.run_xgb(f_train, f_test)[1]
 
     print("Model: ", model_name)
     for rate in rates:
@@ -983,24 +998,64 @@ def test_spagog_results(name: str, rates: list, iters: int = 25, model_name: str
                 # run spagog.
                 try:
                     y_preds, res_cache = gog_model(model="gc+nc", train_X=x_train, train_Y=y_train, val_X=x_val,
-                                                   val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+                                                   val_Y=y_val, test_X=x_test, test_Y=y_test,
+                                                   verbosity=2 if track_loss else 0)
+                    # plots the heatmap.
+                    # compare y_preds and y_test.
+                    if check_heatmap and len(np.unique(y_test)) > 2:
+                        plt.figure()
+                        sns.heatmap(confusion_matrix(y_test, y_preds), annot=True)
+                        plt.title(f"Confusion Matrix of {name} at {rate} missing values with model {model_name}")
+                        plt.savefig(f"heatmaps/{name}_{rate}_{model_name}.png")
+                        plt.show()
+                        check_heatmap = False
+
                 except ValueError:
+                    redos += 1
+                    continue
+                except RuntimeError:
                     redos += 1
                     continue
             elif model_name == "gnc":
                 # run spagog.
                 try:
                     y_preds, res_cache = gog_model(model="gnc", train_X=x_train, train_Y=y_train, val_X=x_val,
-                                                   val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+                                                   val_Y=y_val, test_X=x_test, test_Y=y_test,
+                                                   verbosity=2 if track_loss else 0)
+                    # plots the heatmap.
+                    # compare y_preds and y_test.
+                    if check_heatmap and len(np.unique(y_test)) > 2:
+                        plt.figure()
+                        sns.heatmap(confusion_matrix(y_test, y_preds), annot=True)
+                        plt.title(f"Confusion Matrix of {name} at {rate} missing values with model {model_name}")
+                        plt.savefig(f"heatmaps/{name}_{rate}_{model_name}.png")
+                        plt.show()
+                        check_heatmap = False
                 except ValueError:
+                    redos += 1
+                    continue
+                except RuntimeError:
                     redos += 1
                     continue
             elif model_name == "gc":
                 # run spagog.
                 try:
                     y_preds, res_cache = gog_model(model="gc", train_X=x_train, train_Y=y_train, val_X=x_val,
-                                                   val_Y=y_val, test_X=x_test, test_Y=y_test, verbosity=0)
+                                                   val_Y=y_val, test_X=x_test, test_Y=y_test,
+                                                   verbosity=2 if track_loss else 0)
+                    # plots the heatmap.
+                    # compare y_preds and y_test.
+                    if check_heatmap and len(np.unique(y_test)) > 2:
+                        plt.figure()
+                        sns.heatmap(confusion_matrix(y_test, y_preds), annot=True)
+                        plt.title(f"Confusion Matrix of {name} at {rate} missing values with model {model_name}")
+                        plt.savefig(f"heatmaps/{name}_{rate}_{model_name}.png")
+                        plt.show()
+                        check_heatmap = False
                 except ValueError:
+                    redos += 1
+                    continue
+                except RuntimeError:
                     redos += 1
                     continue
             else:
@@ -1031,4 +1086,493 @@ def test_spagog_results(name: str, rates: list, iters: int = 25, model_name: str
     avs = [np.mean(results[rate]) if results[rate] != np.nan else np.nan for rate in rates]
     stes = [np.std(results[rate]) / np.sqrt(iters) if results[rate] != np.nan else np.nan for rate in rates]
 
-    return full_score, avs, stes
+    if add_full_score:
+        return full_score, avs, stes
+    else:
+        return avs, stes
+
+
+def test_dataset_graphs(name: str, rates: list, iters: int = 25):
+    """
+    this function tests and plots the xgb results for each dataset, for the full data, the unfilled data,
+    the FP with true edges and the FP with heur_dist.
+    :param name: name of the dataset.
+    :param rates: rates of missing values.
+    :param iters: number of iterations for each rate.
+    :return:
+    """
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(f"Name: {name}")
+
+    if name in ["Banknote", "Redwine", "Sonar"]:
+        data = pd.read_csv(f"data/{name}.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+
+    else:
+        train = pd.read_csv(f"data/Tabular/{name}/processed/full/train.csv")
+        val = pd.read_csv(f"data/Tabular/{name}/processed/full/val.csv")
+        test = pd.read_csv(f"data/Tabular/{name}/processed/full/test.csv")
+
+        # concatenate the data.
+        full_data = pd.concat([train, val, test])
+        full_data = shuffle(full_data)
+        full_data = df.z_score(full_data)
+
+    # run xgb on full data.
+    train, test = train_test_split(full_data, test_size=0.2)
+    full_score = classify.run_xgb(train, test)[1]
+
+    # initialize dictionary for the results.
+    results = {
+        "unfilled": {},
+        "true": {},
+        "metric": {},
+    }
+
+    # find true edges.
+    x = full_data.copy().drop(full_data.columns[-1], axis=1)
+    distances_full = calc_l2(x)
+
+    edges_true = mg.get_knn_edges(distances=distances_full, k=40)
+
+    for rate in rates:
+        print(f"Rate: {rate}")
+
+        for i in range(iters):
+            print(f"\tIteration: {i + 1}")
+            data, mask = df.remove_random_cells(full_data.copy(), rate)
+            data = df.z_score(data)
+            unfilled = data.copy()
+
+            # run xgb on unfilled data.
+            u_train, u_test = train_test_split(unfilled.copy(), test_size=0.2)
+            unfilled_score = classify.run_xgb(u_train, u_test)[1]
+            if rate in results["unfilled"]:
+                results["unfilled"][rate].append(unfilled_score)
+            else:
+                results["unfilled"][rate] = [unfilled_score]
+
+            x = data.drop(data.columns[-1], axis=1)
+            y = data.iloc[:, -1].copy()
+
+            # calculate metric edges.
+            dists = df.get_custom_distances(x)
+            edges = mg.get_knn_edges(dists.values, 40)
+
+            # fill the data once with true edges and once with metric edges.
+            x = torch.from_numpy(x.values.astype(np.float32)).to(device)
+            y = torch.from_numpy(y.values.astype(np.int64)).to(device)
+
+            filling_true = filling("feature_propagation", edges_true, x, mask, 40, )
+            filled_true = pd.concat([pd.DataFrame(filling_true.cpu().numpy()), pd.DataFrame(y)], axis=1)
+
+            filling_metric = filling("feature_propagation", edges, x, mask, 40, )
+            filled_metric = pd.concat([pd.DataFrame(filling_metric.cpu().numpy()), pd.DataFrame(y)], axis=1)
+
+            # run xgb on filled data.
+            # redo the iteration if got ValueError
+            f_train, f_test = train_test_split(filled_true, test_size=0.2)
+            try:
+                true_score = classify.run_xgb(f_train, f_test)[1]
+            except ValueError:
+                if i > 0:
+                    i -= 1
+                continue
+
+            if rate in results["true"]:
+                results["true"][rate].append(true_score)
+            else:
+                results["true"][rate] = [true_score]
+
+            f_train, f_test = train_test_split(filled_metric, test_size=0.2)
+            try:
+                metric_score = classify.run_xgb(f_train, f_test)[1]
+            except ValueError:
+                if i > 0:
+                    i -= 1
+                continue
+
+            if rate in results["metric"]:
+                results["metric"][rate].append(metric_score)
+            else:
+                results["metric"][rate] = [metric_score]
+
+    # plot the results.
+    avs = [np.mean(results["unfilled"][rate]) for rate in rates]
+    stds = [np.std(results["unfilled"][rate]) / np.sqrt(iters) for rate in rates]
+    avs1 = [np.mean(results["true"][rate]) for rate in rates]
+    stds1 = [np.std(results["true"][rate]) / np.sqrt(iters) for rate in rates]
+    avs2 = [np.mean(results["metric"][rate]) for rate in rates]
+    stds2 = [np.std(results["metric"][rate]) / np.sqrt(iters) for rate in rates]
+
+    # plot the full data score as well.
+    plt.axhline(y=full_score, color="r", linestyle="--", label="Full data")
+    plt.errorbar(rates, avs, stds, label="Unfilled")
+    plt.errorbar(rates, avs1, stds1, label="Filled with True edges")
+    plt.errorbar(rates, avs2, stds2, label="Filled with Metric edges")
+    plt.xlabel("Rate of missing values")
+    # if 2 classes label the y-axis to AUC, else to accuracy.
+    if len(full_data.iloc[:, -1].unique()) == 2:
+        plt.ylabel("AUC score")
+    else:
+        plt.ylabel("Accuracy")
+    plt.legend()
+    plt.grid()
+    plt.title(f"FP with True and Metric edges in {name}")
+    plt.savefig(f"table_to_graph_plots/XGB results/{name}.png")
+    plt.show()
+    plt.clf()
+
+
+def compare_filling_method(name: str, rates: list, iters: int = 10, filling_method: str = "gfp",
+                           model_name: str = "gc+nc"):
+    """
+    this method compares the results of the filling methods on the given dataset.
+    :param iters: number of iterations for each rate.
+    :param name: name of the dataset.
+    :param rates: rates of missing values.
+    :param filling_method: the filling method to compare.
+    :param model_name: the model to use for the comparison.
+    :return:
+    """
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    results = {}
+
+    if name in ["Redwine", "Banknote", "Sonar"]:
+        data = pd.read_csv(f"data/{name}.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+    else:
+        train = pd.read_csv(f"data/Tabular/{name}/processed/full/train.csv")
+        val = pd.read_csv(f"data/Tabular/{name}/processed/full/val.csv")
+        test = pd.read_csv(f"data/Tabular/{name}/processed/full/test.csv")
+
+        # concatenate the data.
+        full_data = pd.concat([train, val, test])
+        full_data = shuffle(full_data)
+        full_data = df.z_score(full_data)
+
+    print(f"Name: {name}")
+    for rate in rates:
+        print(f"Rate: {rate}")
+        i = 0
+        redos = 0
+        while i < iters and redos < 10:
+            print(f"\tIteration: {i + 1}", end="")
+            if redos > 0:
+                print(f", redo: {redos}", end="")
+            print()
+
+            data_, mask = df.remove_random_cells(full_data.copy(), rate)
+            data_ = df.z_score(data_)
+
+            # splitting the data.
+            t, test = train_test_split(data_, test_size=0.2)
+            train, val = train_test_split(t, test_size=0.2)
+
+            # separating labels.
+            x_train = train.iloc[:, :-1].copy()
+            y_train = train.iloc[:, -1].copy()
+            x_val = val.iloc[:, :-1].copy()
+            y_val = val.iloc[:, -1].copy()
+            x_test = test.iloc[:, :-1].copy()
+            y_test = test.iloc[:, -1].copy()
+
+            if model_name == "gc+nc":
+                # run spagog.
+                try:
+                    y_preds, res_cache = gog_model(model="gc+nc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                                   val_Y=y_val, test_X=x_test, test_Y=y_test,
+                                                   verbosity=0, filling_method=filling_method)
+                except ValueError:
+                    redos += 1
+                    continue
+                except RuntimeError:
+                    redos += 1
+                    continue
+            elif model_name == "gnc":
+                # run spagog.
+                try:
+                    y_preds, res_cache = gog_model(model="gnc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                                   val_Y=y_val, test_X=x_test, test_Y=y_test,
+                                                   verbosity=0, filling_method=filling_method)
+                except ValueError:
+                    redos += 1
+                    continue
+            elif model_name == "gc":
+                # run spagog.
+                try:
+                    y_preds, res_cache = gog_model(model="gc", train_X=x_train, train_Y=y_train, val_X=x_val,
+                                                   val_Y=y_val, test_X=x_test, test_Y=y_test,
+                                                   verbosity=0, filling_method=filling_method)
+                except ValueError:
+                    redos += 1
+                    continue
+            else:
+                raise ValueError("Invalid model name.")
+
+            if len(np.unique(y_test)) == 2:
+                score = res_cache["Test AUC"]
+                if score == 0.5:
+                    redos += 1
+                    continue
+                else:
+                    redos = 0
+            else:
+                score = res_cache["Test Acc"]
+                redos = 0
+
+            if rate in results:
+                results[rate].append(score)
+            else:
+                results[rate] = [score]
+
+            i += 1
+
+        if redos == 10:
+            results[rate] = np.nan
+
+    # return the results.
+    avs = [np.mean(results[rate]) if results[rate] != np.nan else np.nan for rate in rates]
+    stes = [np.std(results[rate]) / np.sqrt(iters) if results[rate] != np.nan else np.nan for rate in rates]
+    return avs, stes
+
+
+def track_model_loss(name: str, rates: list, model: str):
+    if name in ["Redwine", "Banknote", "Sonar"]:
+        data = pd.read_csv(f"data/{name}.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+    else:
+        train = pd.read_csv(f"data/Tabular/{name}/processed/full/train.csv")
+        val = pd.read_csv(f"data/Tabular/{name}/processed/full/val.csv")
+        test = pd.read_csv(f"data/Tabular/{name}/processed/full/test.csv")
+
+        # concatenate the data.
+        full_data = pd.concat([train, val, test])
+        full_data = shuffle(full_data)
+        full_data = df.z_score(full_data)
+
+    print(f"Name: {name}")
+    for rate in rates:
+        print(f"Rate: {rate}")
+
+        data_, mask = df.remove_random_cells(full_data.copy(), rate)
+        data_ = df.z_score(data_)
+
+        # splitting the data.
+        t, test = train_test_split(data_, test_size=0.2)
+        train, val = train_test_split(t, test_size=0.2)
+
+        # separating labels.
+        x_train = train.iloc[:, :-1].copy()
+        y_train = train.iloc[:, -1].copy()
+        x_val = val.iloc[:, :-1].copy()
+        y_val = val.iloc[:, -1].copy()
+        x_test = test.iloc[:, :-1].copy()
+        y_test = test.iloc[:, -1].copy()
+
+        y_preds, res_cache = gog_model(model=model, train_X=x_train, train_Y=y_train, val_X=x_val,
+                                       val_Y=y_val, test_X=x_test, test_Y=y_test,
+                                       verbosity=0, track_loss=True)
+        if len(y_test.unique()) > 2:
+            train_score = res_cache["Train Acc"]
+            test_score = res_cache["Test Acc"]
+        else:
+            train_score = res_cache["Train AUC"]
+            test_score = res_cache["Test AUC"]
+        if model == "gc+nc":
+            plt.plot(range(1, len(res_cache["loss track"]) + 1), res_cache["loss track"], "b--", label="NC loss")
+            plt.plot(range(1, len(res_cache["gc_train_loss"]) + 1), res_cache["gc_train_loss"], "r--", label="GC loss")
+        if model == "gc":
+            plt.plot(range(1, len(res_cache["loss track"]) + 1), res_cache["loss track"], "r--", label="GC loss")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.legend()
+        plt.title("Losses (scores: train: {:.3f}, test: {:.3f})".format(train_score, test_score))
+        # plt.savefig(f"plots/scores_{name}_{int(rate * 100)}_{model}.png")
+        plt.show()
+
+
+def draw_final_results(name: str, rates: list, percentages: list, iters: int = 10, ):
+    print(f"Running {name} dataset")
+
+    # compute the score on full dataset.
+    if name in ["Redwine", "Banknote", "Sonar"]:
+        data = pd.read_csv(f"data/{name}.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+    else:
+        train = pd.read_csv(f"data/Tabular/{name}/processed/full/train.csv")
+        val = pd.read_csv(f"data/Tabular/{name}/processed/full/val.csv")
+        test = pd.read_csv(f"data/Tabular/{name}/processed/full/test.csv")
+
+        # concatenate the data.
+        full_data = pd.concat([train, val, test])
+        full_data = shuffle(full_data)
+        full_data = df.z_score(full_data)
+
+    # remove 10% of the data.
+    data_, mask = df.remove_random_cells(full_data.copy(), .1)
+    data_ = df.z_score(data_)
+    x = data_.iloc[:, :-1]
+    y = data_.iloc[:, -1]
+    # run on spagog models.
+    a0, b0 = test_spagog_results(name, rates, model_name="gnc", iters=iters, check_heatmap=False, add_full_score=False)
+    print(f"Spagog GNC: {a0}")
+    a1, b1 = test_spagog_results(name, rates, model_name="gc", iters=iters, check_heatmap=False, add_full_score=False)
+    print(f"Spagog GC: {a1}")
+    a2, b2 = test_spagog_results(name, rates, model_name="gc+nc", iters=iters, check_heatmap=False, add_full_score=False)
+    print(f"Spagog GC+NC: {a2}")
+
+    # run the model on the full dataset.
+    train, test = train_test_split(full_data, test_size=0.2)
+    y = classify.run_xgb(train, test)[1]
+    print(f"Full data XGB: {y}")
+    plt.axhline(y, color='r', linestyle='--', label="Full data XGB")  # plot the full data xgb score.
+    y = classify.run_nn(train, test)[1]
+    print(f"Full data NN: {y}")
+    plt.axhline(y, color='g', linestyle='--', label="Full data NN")  # plot the full data nn scor
+
+    # find the true edges.
+    x = full_data.iloc[:, :-1]
+    y = full_data.iloc[:, -1]
+    true_edges = df.get_custom_distances(x)
+    true_edges = df.get_knn_edges(true_edges.values, )
+    #
+    # run on the missing data.
+    results = {
+        rate: {
+            "unf": [],
+            "tru_xgb": [],
+            "tru_nn": [],
+            "met_xgb": [],
+            "met_nn": []
+        } for rate in percentages
+    }
+    for rate in percentages:
+        print(f"Rate: {rate}")
+        for i in range(10):
+            print(f"Iteration: {i + 1}")
+            data_, mask = df.remove_random_cells(full_data.copy(), rate)
+            data_ = df.z_score(data_)
+            x = data_.iloc[:, :-1]
+            #
+            # splitting the data.
+            t, test = train_test_split(data_, test_size=0.2)
+            y = classify.run_xgb(t, test)[1]
+            if rate not in results:
+                results[rate]["unf"] = []
+            results[rate]["unf"].append(y)  # unfilled data.
+            #
+            # fill the data with true and metric edges.
+            metric_edges = df.get_custom_distances(x)
+            metric_edges = df.get_knn_edges(metric_edges.values, )
+            #
+            # fill the data with true edges.
+            x_true_fill = df.fill(x, mask, true_edges)
+            x_metric_fill = df.fill(x, mask, metric_edges)
+            y = data_.iloc[:, -1].reset_index(drop=True)
+            metric_filled = pd.concat([x_metric_fill, y], axis=1)
+            true_filled = pd.concat([x_true_fill, y], axis=1)
+            #
+            # run the model on the filled data.
+            t, test = train_test_split(metric_filled, test_size=0.2)
+            y = classify.run_xgb(t, test)[1]
+            if rate not in results:
+                results[rate]["met_xgb"] = []
+            results[rate]["met_xgb"].append(y)  # metric filled data.
+            y = classify.run_nn(t, test)[1]
+            if rate not in results:
+                results[rate]["met_nn"] = []
+            results[rate]["met_nn"].append(y)
+            t, test = train_test_split(true_filled, test_size=0.2)
+            y = classify.run_xgb(t, test)[1]
+            if rate not in results:
+                results[rate]["tru_xgb"] = []
+            results[rate]["tru_xgb"].append(y)  # true filled data.
+            y = classify.run_nn(t, test)[1]
+            if rate not in results:
+                results[rate]["tru_nn"] = []
+            results[rate]["tru_nn"].append(y)
+    #
+    avs_unf = [np.mean(results[rate]["unf"]) if results[rate]["unf"] != np.nan else np.nan for rate in
+               percentages]
+    stes_unf = [np.std(results[rate]["unf"]) / np.sqrt(10) if results[rate]["unf"] != np.nan else np.nan for rate in
+                percentages]
+    #
+    avs_f_t_x = [np.mean(results[rate]["tru_xgb"]) if results[rate]["tru_xgb"] != np.nan else np.nan for rate in
+                 percentages]
+    stes_f_t_x = [np.std(results[rate]["tru_xgb"]) / np.sqrt(10) if results[rate]["tru_xgb"] != np.nan else np.nan
+                  for
+                  rate in percentages]
+    #
+    avs_f_t_n = [np.mean(results[rate]["tru_nn"]) if results[rate]["tru_nn"] != np.nan else np.nan for rate in
+                 percentages]
+    stes_f_t_n = [np.std(results[rate]["tru_nn"]) / np.sqrt(10) if results[rate]["tru_nn"] != np.nan else np.nan
+                  for
+                  rate in percentages]
+    #
+    avs_f_m_x = [np.mean(results[rate]["met_xgb"]) if results[rate]["met_xgb"] != np.nan else np.nan for rate in
+                 percentages]
+    stes_f_m_x = [np.std(results[rate]["met_xgb"]) / np.sqrt(10) if results[rate]["met_xgb"] != np.nan else np.nan
+                  for
+                  rate in percentages]
+    #
+    avs_f_m_n = [np.mean(results[rate]["met_nn"]) if results[rate]["met_nn"] != np.nan else np.nan for rate in
+                 percentages]
+    stes_f_m_n = [np.std(results[rate]["met_nn"]) / np.sqrt(10) if results[rate]["met_nn"] != np.nan else np.nan
+                  for
+                  rate in percentages]
+    print(f"unfilled- {avs_unf}\ntrue xgb- {avs_f_t_x}\ntrue nn- {avs_f_t_n}\nmetric xgb- {avs_f_m_x}"
+          f"\nmetric nn- {avs_f_m_n}")
+    #
+    a0, b0 = test_spagog_results(name, percentages, model_name="gnc", add_full_score=False)
+    a1, b1 = test_spagog_results(name, percentages, model_name="gc", add_full_score=False)
+    a2, b2 = test_spagog_results(name, percentages, model_name="gc+nc", add_full_score=False)
+    #
+    a0 = np.array(a0)
+    b0 = np.array(b0)
+    a1 = np.array(a1)
+    b1 = np.array(b1)
+    a2 = np.array(a2)
+    b2 = np.array(b2)
+    #
+    pers = [int(rate * 100) for rate in percentages]
+    # naive models.
+    plt.errorbar(pers, avs_unf, yerr=stes_unf, label="Unfilled")
+    plt.fill_between(pers, np.array(avs_unf) - np.array(stes_unf),
+                     np.array(avs_unf) + np.array(stes_unf), alpha=0.3)
+    plt.errorbar(pers, avs_f_t_x, yerr=stes_f_t_x, label="True XGB")
+    plt.fill_between(pers, np.array(avs_f_t_x) - np.array(stes_f_t_x),
+                     np.array(avs_f_t_x) + np.array(stes_f_t_x), alpha=0.3)
+    plt.errorbar(pers, avs_f_t_n, yerr=stes_f_t_n, label="True NN")
+    plt.fill_between(pers, np.array(avs_f_t_n) - np.array(stes_f_t_n),
+                     np.array(avs_f_t_n) + np.array(stes_f_t_n), alpha=0.3)
+    plt.errorbar(pers, avs_f_m_x, yerr=stes_f_m_x, label="Metric XGB")
+    plt.fill_between(pers, np.array(avs_f_m_x) - np.array(stes_f_m_x),
+                     np.array(avs_f_m_x) + np.array(stes_f_m_x), alpha=0.3)
+    plt.errorbar(pers, avs_f_m_n, yerr=stes_f_m_n, label="Metric NN")
+    plt.fill_between(pers, np.array(avs_f_m_n) - np.array(stes_f_m_n),
+                     np.array(avs_f_m_n) + np.array(stes_f_m_n), alpha=0.3)
+    # spagog models.
+    plt.errorbar(pers, a0, yerr=b0, label="GNC")
+    plt.fill_between(pers, a0 - b0, a0 + b0, alpha=0.3)
+    plt.errorbar(pers, a1, yerr=b1, label="GC")
+    plt.fill_between(pers, a1 - b1, a1 + b1, alpha=0.3)
+    plt.errorbar(pers, a2, yerr=b2, label="GC+NC")
+    plt.fill_between(pers, a2 - b2, a2 + b2, alpha=0.3)
+    plt.title(f"{name.capitalize()} dataset results")
+    plt.xlabel("Percentage of missing data")
+    plt.ylabel("AUC") if name in ["Banknote", "Sonar"] else plt.ylabel("Accuracy")
+    plt.legend()
+    plt.grid()
+    plt.savefig(f"final results/{name}.png")
+    plt.show()
+    plt.clf()
+
+
+#todo- check why xgb is better than nn at accuracy on full data by such a large margin.

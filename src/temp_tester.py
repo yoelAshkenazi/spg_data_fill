@@ -12,8 +12,7 @@ from scipy.optimize import minimize
 from sklearn.linear_model import LinearRegression
 from src.spagog.gog_model import gog_model
 import seaborn as sns
-from sklearn.metrics import confusion_matrix
-import torch.nn as nn
+from sklearn.metrics import confusion_matrix, classification_report, roc_auc_score, roc_curve, auc, f1_score
 
 
 def test_data(name: str):
@@ -939,9 +938,12 @@ def test_spagog_results(name: str, rates: list, iters: int = 10, model_name: str
     # initialize the results.
     results = {}
 
-    # get the dataset.
-    if name in ["Redwine", "Banknote", "Sonar"]:
+    if name in ["Redwine", "Banknote", "Sonar", "Credit", 'HTRU_2', "Phishing", "earthquakes"]:
         data = pd.read_csv(f"data/{name}.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+    elif name == "Wine":
+        data = pd.read_csv("data/Whitewine.csv")
         data = shuffle(data)
         full_data = df.z_score(data)
     else:
@@ -953,6 +955,9 @@ def test_spagog_results(name: str, rates: list, iters: int = 10, model_name: str
         full_data = pd.concat([train, val, test])
         full_data = shuffle(full_data)
         full_data = df.z_score(full_data)
+
+        # remove the index column.
+        full_data = full_data.iloc[:, 1:]
     data_ = full_data
 
     # save score for full data.
@@ -1237,7 +1242,6 @@ def compare_filling_method(name: str, rates: list, iters: int = 10, filling_meth
     :param model_name: the model to use for the comparison.
     :return:
     """
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     results = {}
 
@@ -1397,12 +1401,15 @@ def track_model_loss(name: str, rates: list, model: str):
         plt.show()
 
 
-def draw_final_results(name: str, rates: list, percentages: list, iters: int = 10, ):
+def draw_final_results(name: str, rates: list, percentages: list, iters: int = 10):
     print(f"Running {name} dataset")
 
-    # compute the score on full dataset.
-    if name in ["Redwine", "Banknote", "Sonar"]:
+    if name in ["Redwine", "Banknote", "Sonar", "Credit", 'HTRU_2', "Phishing", "earthquakes"]:
         data = pd.read_csv(f"data/{name}.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+    elif name == "Wine":
+        data = pd.read_csv("data/Whitewine.csv")
         data = shuffle(data)
         full_data = df.z_score(data)
     else:
@@ -1415,18 +1422,17 @@ def draw_final_results(name: str, rates: list, percentages: list, iters: int = 1
         full_data = shuffle(full_data)
         full_data = df.z_score(full_data)
 
-    # remove 10% of the data.
-    data_, mask = df.remove_random_cells(full_data.copy(), .1)
-    data_ = df.z_score(data_)
-    x = data_.iloc[:, :-1]
-    y = data_.iloc[:, -1]
+        # remove the index column.
+        full_data = full_data.iloc[:, 1:]
+
     # run on spagog models.
     a0, b0 = test_spagog_results(name, rates, model_name="gnc", iters=iters, check_heatmap=False, add_full_score=False)
-    print(f"Spagog GNC: {a0}")
+    print(f"Spagog GNC: {a0}+-{b0}")
     a1, b1 = test_spagog_results(name, rates, model_name="gc", iters=iters, check_heatmap=False, add_full_score=False)
-    print(f"Spagog GC: {a1}")
-    a2, b2 = test_spagog_results(name, rates, model_name="gc+nc", iters=iters, check_heatmap=False, add_full_score=False)
-    print(f"Spagog GC+NC: {a2}")
+    print(f"Spagog GC: {a1}+-{b1}")
+    a2, b2 = test_spagog_results(name, rates, model_name="gc+nc", iters=iters, check_heatmap=False,
+                                 add_full_score=False)
+    print(f"Spagog GC+NC: {a2}+-{b2}")
 
     # run the model on the full dataset.
     train, test = train_test_split(full_data, test_size=0.2)
@@ -1435,11 +1441,10 @@ def draw_final_results(name: str, rates: list, percentages: list, iters: int = 1
     plt.axhline(y, color='r', linestyle='--', label="Full data XGB")  # plot the full data xgb score.
     y = classify.run_nn(train, test)[1]
     print(f"Full data NN: {y}")
-    plt.axhline(y, color='g', linestyle='--', label="Full data NN")  # plot the full data nn scor
+    plt.axhline(y, color='g', linestyle='--', label="Full data NN")  # plot the full data nn score.
 
     # find the true edges.
     x = full_data.iloc[:, :-1]
-    y = full_data.iloc[:, -1]
     true_edges = df.get_custom_distances(x)
     true_edges = df.get_knn_edges(true_edges.values, )
     #
@@ -1529,11 +1534,7 @@ def draw_final_results(name: str, rates: list, percentages: list, iters: int = 1
                   rate in percentages]
     print(f"unfilled- {avs_unf}\ntrue xgb- {avs_f_t_x}\ntrue nn- {avs_f_t_n}\nmetric xgb- {avs_f_m_x}"
           f"\nmetric nn- {avs_f_m_n}")
-    #
-    a0, b0 = test_spagog_results(name, percentages, model_name="gnc", add_full_score=False)
-    a1, b1 = test_spagog_results(name, percentages, model_name="gc", add_full_score=False)
-    a2, b2 = test_spagog_results(name, percentages, model_name="gc+nc", add_full_score=False)
-    #
+
     a0 = np.array(a0)
     b0 = np.array(b0)
     a1 = np.array(a1)
@@ -1541,38 +1542,170 @@ def draw_final_results(name: str, rates: list, percentages: list, iters: int = 1
     a2 = np.array(a2)
     b2 = np.array(b2)
     #
-    pers = [int(rate * 100) for rate in percentages]
     # naive models.
-    plt.errorbar(pers, avs_unf, yerr=stes_unf, label="Unfilled")
-    plt.fill_between(pers, np.array(avs_unf) - np.array(stes_unf),
+    plt.errorbar(percentages, avs_unf, yerr=stes_unf, label="Unfilled")
+    plt.fill_between(percentages, np.array(avs_unf) - np.array(stes_unf),
                      np.array(avs_unf) + np.array(stes_unf), alpha=0.3)
-    plt.errorbar(pers, avs_f_t_x, yerr=stes_f_t_x, label="True XGB")
-    plt.fill_between(pers, np.array(avs_f_t_x) - np.array(stes_f_t_x),
+    plt.errorbar(percentages, avs_f_t_x, yerr=stes_f_t_x, label="True XGB")
+    plt.fill_between(percentages, np.array(avs_f_t_x) - np.array(stes_f_t_x),
                      np.array(avs_f_t_x) + np.array(stes_f_t_x), alpha=0.3)
-    plt.errorbar(pers, avs_f_t_n, yerr=stes_f_t_n, label="True NN")
-    plt.fill_between(pers, np.array(avs_f_t_n) - np.array(stes_f_t_n),
+    plt.errorbar(percentages, avs_f_t_n, yerr=stes_f_t_n, label="True NN")
+    plt.fill_between(percentages, np.array(avs_f_t_n) - np.array(stes_f_t_n),
                      np.array(avs_f_t_n) + np.array(stes_f_t_n), alpha=0.3)
-    plt.errorbar(pers, avs_f_m_x, yerr=stes_f_m_x, label="Metric XGB")
-    plt.fill_between(pers, np.array(avs_f_m_x) - np.array(stes_f_m_x),
+    plt.errorbar(percentages, avs_f_m_x, yerr=stes_f_m_x, label="Metric XGB")
+    plt.fill_between(percentages, np.array(avs_f_m_x) - np.array(stes_f_m_x),
                      np.array(avs_f_m_x) + np.array(stes_f_m_x), alpha=0.3)
-    plt.errorbar(pers, avs_f_m_n, yerr=stes_f_m_n, label="Metric NN")
-    plt.fill_between(pers, np.array(avs_f_m_n) - np.array(stes_f_m_n),
+    plt.errorbar(percentages, avs_f_m_n, yerr=stes_f_m_n, label="Metric NN")
+    plt.fill_between(percentages, np.array(avs_f_m_n) - np.array(stes_f_m_n),
                      np.array(avs_f_m_n) + np.array(stes_f_m_n), alpha=0.3)
     # spagog models.
-    plt.errorbar(pers, a0, yerr=b0, label="GNC")
-    plt.fill_between(pers, a0 - b0, a0 + b0, alpha=0.3)
-    plt.errorbar(pers, a1, yerr=b1, label="GC")
-    plt.fill_between(pers, a1 - b1, a1 + b1, alpha=0.3)
-    plt.errorbar(pers, a2, yerr=b2, label="GC+NC")
-    plt.fill_between(pers, a2 - b2, a2 + b2, alpha=0.3)
+    plt.errorbar(percentages, a0, yerr=b0, label="GNC")
+    plt.fill_between(percentages, a0 - b0, a0 + b0, alpha=0.3)
+    plt.errorbar(percentages, a1, yerr=b1, label="GC")
+    plt.fill_between(percentages, a1 - b1, a1 + b1, alpha=0.3)
+    plt.errorbar(percentages, a2, yerr=b2, label="GC+NC")
+    plt.fill_between(percentages, a2 - b2, a2 + b2, alpha=0.3)
     plt.title(f"{name.capitalize()} dataset results")
     plt.xlabel("Percentage of missing data")
     plt.ylabel("AUC") if name in ["Banknote", "Sonar"] else plt.ylabel("Accuracy")
     plt.legend()
     plt.grid()
+
     plt.savefig(f"final results/{name}.png")
     plt.show()
     plt.clf()
 
 
-#todo- check why xgb is better than nn at accuracy on full data by such a large margin.
+def test_multiclass_results(name: str, iters: int = 10):
+    """
+    this function tests the spagog method on the given dataset, for multiclass classification.
+    :param name: name of the dataset.
+    :param iters: number of iterations for each rate.
+    :return:
+    """
+
+    if name in ["Redwine", "Banknote", "Sonar"]:
+        data = pd.read_csv(f"data/{name}.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+    else:
+        train = pd.read_csv(f"data/Tabular/{name}/processed/full/train.csv")
+        val = pd.read_csv(f"data/Tabular/{name}/processed/full/val.csv")
+        test = pd.read_csv(f"data/Tabular/{name}/processed/full/test.csv")
+
+        # concatenate the data.
+        full_data = pd.concat([train, val, test])
+        full_data = shuffle(full_data)
+        full_data = df.z_score(full_data)
+
+    print(f"Name: {name}")
+
+    scores_nn = 0
+    scores_xgb = 0
+    for i in range(iters):
+        print(f"Iteration: {i + 1}")
+        # splitting the data.
+        train, test = train_test_split(full_data, test_size=0.2)
+        # run nn and xgb.
+        scores_nn += classify.run_nn(train, test)[1]
+        scores_xgb += classify.run_xgb(train, test)[1]
+    scores_nn /= iters
+    scores_xgb /= iters
+    print(f"NN: {scores_nn}, XGB: {scores_xgb} in {name}")
+
+
+def test_data_anomalies(name: str):
+    """
+    this method takes a dataset, and outputs the followings:
+    feature correlation heatmap, feature distribution, class distribution, and class distribution per feature.
+    Also plots the confusion matrix of the NN results on the dataset.
+    :param name:
+    :return:
+    """
+    if name in ["Redwine", "Banknote", "Sonar"]:
+        data = pd.read_csv(f"data/{name}.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+    elif name == "Wine":
+        data = pd.read_csv("data/Whitewine.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+    else:
+        train = pd.read_csv(f"data/Tabular/{name}/processed/full/train.csv")
+        val = pd.read_csv(f"data/Tabular/{name}/processed/full/val.csv")
+        test = pd.read_csv(f"data/Tabular/{name}/processed/full/test.csv")
+
+        # concatenate the data.
+        full_data = pd.concat([train, val, test])
+        full_data = shuffle(full_data)
+        full_data = df.z_score(full_data)
+        full_data = full_data.iloc[:, 1:]
+
+    print(f"Name: {name}")
+
+    # feature correlation heatmap.
+    plt.figure()
+    sns.heatmap(full_data.iloc[:, :-1].corr(), annot=True)
+    plt.title(f"{name.capitalize()} feature correlation heatmap")
+
+    # feature distribution.
+    plt.figure(figsize=(20, 20))
+    for i in range(full_data.shape[1] - 1):
+        plt.subplot(4, 4, i + 1)
+        sns.histplot(full_data.iloc[:, i], kde=True)
+        plt.title(f"Feature {i}")
+    plt.suptitle(f"{name.capitalize()} feature distribution")
+
+    # class distribution.
+    plt.figure()
+    sns.histplot(full_data.iloc[:, -1], kde=True)
+    plt.title(f"{name.capitalize()} class distribution")
+
+    # boxplot of the features.
+    plt.figure(figsize=(20, 20))
+    for i in range(full_data.shape[1] - 1):
+        plt.subplot(4, 4, i + 1)
+        sns.boxplot(x=full_data.iloc[:, -1], y=full_data.iloc[:, i])
+        plt.title(f"Feature {i}")
+    plt.suptitle(f"{name.capitalize()} boxplot of the features")
+
+    # confusion matrix of the NN results.
+    train, test = train_test_split(full_data, test_size=0.2)
+    _, score, y_preds = classify.run_with_preds_nn(train, test)
+    plt.figure()
+    sns.heatmap(confusion_matrix(test.iloc[:, -1], y_preds), annot=True)
+    plt.xlabel("Predicted")
+    plt.ylabel("True")
+    plt.title(f"{name.capitalize()} confusion matrix of NN results (score: {score})")
+    plt.show()
+
+
+def temp_testing(name: str,):
+    if name in ["Redwine", "Banknote", "Sonar", "Credit", 'HTRU_2', "Phishing", "earthquakes"]:
+        data = pd.read_csv(f"data/{name}.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+    elif name == "Wine":
+        data = pd.read_csv("data/Whitewine.csv")
+        data = shuffle(data)
+        full_data = df.z_score(data)
+    else:
+        train = pd.read_csv(f"data/Tabular/{name}/processed/full/train.csv")
+        val = pd.read_csv(f"data/Tabular/{name}/processed/full/val.csv")
+        test = pd.read_csv(f"data/Tabular/{name}/processed/full/test.csv")
+
+        # concatenate the data.
+        full_data = pd.concat([train, val, test])
+        full_data = shuffle(full_data)
+        full_data = df.z_score(full_data)
+
+        # remove the index column.
+        full_data = full_data.iloc[:, 1:]
+
+    # run nn and xgb.
+    print(full_data.shape)
+    train, test = train_test_split(full_data, test_size=0.2)
+    scores_nn = classify.run_nn(train, test)[1]
+    scores_xgb = classify.run_xgb(train, test)[1]
+    print(f"Accuracy: NN: {scores_nn}, XGB: {scores_xgb} in {name}") if len(full_data.iloc[:, -1].unique()) > 2 \
+        else print(f"AUC: NN: {scores_nn}, XGB: {scores_xgb} in {name}")

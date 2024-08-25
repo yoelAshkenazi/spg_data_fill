@@ -287,7 +287,14 @@ def calc_l2(data: pd.DataFrame):
     :return: matrix of distances.
     """
     data = data.fillna(0)
-    dists = np.linalg.norm(data.values[:, np.newaxis, :] - data.values[np.newaxis, :, :], axis=-1)
+    try:
+        dists = np.linalg.norm(data.values[:, np.newaxis, :] - data.values[np.newaxis, :, :], axis=-1)
+    # if the data is too large, we use a for loop to calculate the distances.
+    except MemoryError:
+        dists = np.zeros((data.shape[0], data.shape[0]))
+        for i in range(data.shape[1]):
+            dists += np.square(data.values[:, i][:, np.newaxis] - data.values[:, i][np.newaxis, :])
+        dists = np.sqrt(dists)
 
     return dists
 
@@ -300,11 +307,10 @@ def calc_l2_space_saver(data: pd.DataFrame):
     """
     data = data.fillna(0)
     dists = np.zeros((data.shape[0], data.shape[0]))
-    for i in range(data.shape[0]):
-        for j in range(i + 1, data.shape[0]):
-            dists[i, j] = np.linalg.norm(data.values[i] - data.values[j])
-            dists[j, i] = dists[i, j]
-
+    # use vectorized operations to calculate the distances.
+    for i in range(data.shape[1]):
+        dists += np.square(data.values[:, i][:, np.newaxis] - data.values[:, i][np.newaxis, :])
+    dists = np.sqrt(dists)
     return dists
 
 

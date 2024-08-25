@@ -15,9 +15,4 @@ PERCENTAGES = [int(100 * x) for x in REMOVED_PERCENTAGES]
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
 
-    names = ["Redwine", "Wine", "Accent"]
-    # for name in names:
-    #     draw_final_results(name, [0.1], REMOVED_PERCENTAGES, 10)
-
-
-# TODO- fix the issue with datasets.
+    draw_final_results("earthquakes", REMOVED_PERCENTAGES, PERCENTAGES, 10)

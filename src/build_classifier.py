@@ -1,11 +1,14 @@
 import torch
 import pandas as pd
 import numpy as np
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, f1_score
+from sklearn.utils.class_weight import compute_class_weight
 from xgboost import XGBClassifier
 from torch.utils.data import DataLoader, TensorDataset
-from torch.nn.functional import softmax
+import torch.nn.functional as F
+from torch_geometric.nn import GCNConv
 import torch.nn as nn
+from torch_geometric.data import Data
 
 
 # initialize a neural network with 3 hidden layers, and evaluate it.
@@ -29,6 +32,23 @@ class Net(nn.Module):
         x = self.activation1(x)
         x = self.final(x)
         x = self.out(x)
+        return x
+
+
+class GCN(torch.nn.Module):
+    def __init__(self, n_features, n_output):
+        super(GCN, self).__init__()
+        self.conv1 = GCNConv(n_features, n_features // 2)
+        self.conv2 = GCNConv(n_features // 2, n_output)
+
+    def forward(self, _data):
+        x, edge_index = _data.x, _data.edge_index
+
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+        x = F.dropout(x, training=self.training)
+        x = self.conv2(x, edge_index)
+        x = F.log_softmax(x, dim=1)
         return x
 
 
@@ -59,7 +79,13 @@ def run_nn(train: pd.DataFrame, test: pd.DataFrame):
 
     # initialize the neural network.
     net = Net(n_features=x_train.shape[1], n_output=len(np.unique(y_train))).to(device)
-    loss_func = torch.nn.CrossEntropyLoss() if len(np.unique(y_train)) > 2 else torch.nn.BCELoss()
+    if len(np.unique(y_train)) == 2:
+        loss_func = torch.nn.BCELoss()
+    else:
+        sizes = [len(y_train[y_train == i]) for i in np.unique(y_train)]
+        weights = [size / len(y_train) for size in sizes]
+        weight = torch.tensor(weights).to(device)
+        loss_func = torch.nn.CrossEntropyLoss(weight=weight)
     # initialize the optimizer.
     optimizer = torch.optim.Adam(net.parameters(), lr=0.001)
 
@@ -92,12 +118,58 @@ def run_nn(train: pd.DataFrame, test: pd.DataFrame):
 
         return auc_train, auc_test
     # multiclass.
-    # evaluate accuracy.
+
     with torch.no_grad():
         test_preds = torch.argmax((net(x_test_tensor)), dim=1)
         train_preds = torch.argmax((net(x_train_tensor)), dim=1)
-    auc_train = np.sum(train_preds.cpu().numpy() == y_train) / len(y_train)
-    auc_test = np.sum(test_preds.cpu().numpy() == y_test) / len(y_test)
+    # evaluate accuracy.
+    # auc_train = np.sum(train_preds.cpu().numpy() == y_train) / len(y_train)
+    # auc_test = np.sum(test_preds.cpu().numpy() == y_test) / len(y_test)
+    # evaluate f1 micro score.
+    train_f1 = f1_score(y_train, train_preds.cpu().numpy(), average='weighted')
+    test_f1 = f1_score(y_test, test_preds.cpu().numpy(), average='weighted')
+    auc_train = train_f1
+    auc_test = test_f1
+    return auc_train, auc_test
+
+
+def filter_edge_index(edge_index, node_indices):
+    """ Filters edge_index to only include edges where both nodes are in node_indices. """
+    mask = torch.isin(edge_index[0], node_indices) & torch.isin(edge_index[1], node_indices)
+    return edge_index[:, mask]
+
+
+def run_gcn(data):
+    """takes a training and test set, number of hidden layers, epochs, learning rate and momentum and trains a neural
+    network on the training set. the neural network is then evaluated on the test set and the accuracy is returned."""
+    # Extract features and labels from the train and test datasets
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    data = data.to(device)
+    model = GCN(n_features=data.num_features, n_output=len(np.unique(data.y))).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=5e-4)
+
+    model.train()
+
+    for epoch in range(200):
+        optimizer.zero_grad()
+        out = model(data)
+        loss = F.nll_loss(out[data.train_mask], data.y[data.train_mask])
+        loss.backward()
+        optimizer.step()
+
+    model.eval()
+    _, preds = model(data).max(dim=1)
+    preds_train = preds[data.train_mask]
+    preds_test = preds[data.test_mask]
+    if len(np.unique(data.y)) == 2:
+        auc_train = roc_auc_score(data.y[data.train_mask].cpu().numpy(), preds_train.cpu().numpy())
+        auc_test = roc_auc_score(data.y[data.test_mask].cpu().numpy(), preds_test.cpu().numpy())
+
+    else:
+        auc_train = f1_score(data.y[data.train_mask].cpu().numpy(), preds_train.cpu().numpy(), average='weighted')
+        auc_test = f1_score(data.y[data.test_mask].cpu().numpy(), preds_test.cpu().numpy(), average='weighted')
+
     return auc_train, auc_test
 
 
@@ -129,14 +201,20 @@ def run_xgb(train: pd.DataFrame, test: pd.DataFrame):
 
     # initialize new XGB classifier.
     model = XGBClassifier(n_estimators=10, num_class=len(np.unique(y_train)), objective='multi:softmax',)
+
+    class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
+    sample_weights = class_weights
     # train the model.
-    model.fit(x_train, y_train)
+    model.fit(x_train, y_train,)
 
     y_pred_test = model.predict(x_test)
     y_pred_train = model.predict(x_train)
     # gets accuracy score.
-    test_score = np.sum(y_pred_test == y_test) / len(y_test)
-    train_score = np.sum(y_pred_train == y_train) / len(y_train)
+    # test_score = np.sum(y_pred_test == y_test) / len(y_test)
+    # train_score = np.sum(y_pred_train == y_train) / len(y_train)
+    test_score = f1_score(y_test, y_pred_test, average='weighted')
+    train_score = f1_score(y_train, y_pred_train, average='weighted')
+
     return train_score, test_score
 
 

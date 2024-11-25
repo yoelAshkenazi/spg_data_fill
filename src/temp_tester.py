@@ -1,5 +1,11 @@
+import os
+from os import device_encoding
+
 import numpy as np
 import pandas as pd
+import torch
+import torch_geometric
+from networkx import edges
 
 from src import build_classifier as classify
 import data_filler as df
@@ -13,6 +19,9 @@ from sklearn.linear_model import LinearRegression
 from src.spagog.gog_model import gog_model
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, classification_report, roc_auc_score, roc_curve, auc, f1_score
+from sklearn.neighbors import kneighbors_graph
+from torch_geometric.nn import GCNConv
+import torch.nn.functional as F
 
 
 def test_data(name: str):
@@ -187,7 +196,14 @@ def calc_l2(data: pd.DataFrame):
     :return: matrix of distances.
     """
     data = data.fillna(0)
-    dists = np.linalg.norm(data.values[:, np.newaxis, :] - data.values[np.newaxis, :, :], axis=-1)
+    try:
+        dists = np.linalg.norm(data.values[:, np.newaxis, :] - data.values[np.newaxis, :, :], axis=-1)
+    # if the data is too large, we use a for loop to calculate the distances.
+    except MemoryError:
+        dists = np.zeros((data.shape[0], data.shape[0]))
+        for i in range(data.shape[1]):
+            dists += np.square(data.values[:, i][:, np.newaxis] - data.values[:, i][np.newaxis, :])
+        dists = np.sqrt(dists)
 
     return dists
 
@@ -943,7 +959,7 @@ def test_spagog_results(name: str, rates: list, iters: int = 10, model_name: str
         data = shuffle(data)
         full_data = df.z_score(data)
     elif name == "Wine":
-        data = pd.read_csv("data/Whitewine.csv")
+        data = pd.read_csv("data/multiclass/Whitewine.csv")
         data = shuffle(data)
         full_data = df.z_score(data)
     else:
@@ -1409,7 +1425,7 @@ def draw_final_results(name: str, rates: list, percentages: list, iters: int = 1
         data = shuffle(data)
         full_data = df.z_score(data)
     elif name == "Wine":
-        data = pd.read_csv("data/Whitewine.csv")
+        data = pd.read_csv("data/multiclass/Whitewine.csv")
         data = shuffle(data)
         full_data = df.z_score(data)
     else:
@@ -1627,7 +1643,7 @@ def test_data_anomalies(name: str):
         data = shuffle(data)
         full_data = df.z_score(data)
     elif name == "Wine":
-        data = pd.read_csv("data/Whitewine.csv")
+        data = pd.read_csv("data/multiclass/Whitewine.csv")
         data = shuffle(data)
         full_data = df.z_score(data)
     else:
@@ -1686,7 +1702,7 @@ def temp_testing(name: str,):
         data = shuffle(data)
         full_data = df.z_score(data)
     elif name == "Wine":
-        data = pd.read_csv("data/Whitewine.csv")
+        data = pd.read_csv("data/multiclass/Whitewine.csv")
         data = shuffle(data)
         full_data = df.z_score(data)
     else:
@@ -1709,3 +1725,400 @@ def temp_testing(name: str,):
     scores_xgb = classify.run_xgb(train, test)[1]
     print(f"Accuracy: NN: {scores_nn}, XGB: {scores_xgb} in {name}") if len(full_data.iloc[:, -1].unique()) > 2 \
         else print(f"AUC: NN: {scores_nn}, XGB: {scores_xgb} in {name}")
+
+
+def test_filling_auc(name: str, percentages: list, iters: int = 10, multiclass: bool = False):
+    """
+    This method takes a dataset (tabular, binary), and for each removal percentage it
+    executes the following methods:
+    1. XGB and NN on the full data.
+    2. XGB and NN on the missing data after filling with the correct edges (KNN on full data).
+    3. XGB and NN on the missing data after filling with the metric edges (KNN in the missing data).
+    4. XGB and NN on the unfilled data.
+
+    After all of those, it returns a dictionary with the results (percentage: 8 results for each percentage).
+
+    :param name:  name of the dataset.
+    :param percentages:  list of percentages to remove.
+    :param iters:  number of iterations for each percentage.
+    :param multiclass:  whether the dataset is multiclass or not.
+    :return:
+    """
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(device)
+    # read the data.
+    _df = pd.read_csv(f"data/binary/{name}.csv") if not multiclass else pd.read_csv(f"data/multiclass/{name}.csv")
+    df_ = shuffle(_df)  # shuffle the data.
+
+    # z-score the data.
+    full_data = z_score(df_)
+
+    # initialize the results' dictionary.
+    results = {
+        rate: [] for rate in percentages
+    }
+
+    # find the true edges.
+    x = full_data.copy().drop(full_data.columns[-1], axis=1)
+    distances_full = calc_l2(x)
+    edges_true = mg.get_knn_edges(distances=distances_full, k=5)
+
+    # calculate the full data results.
+
+    # run xgb on full data.
+    train, test = train_test_split(full_data, test_size=0.2)
+
+    full_score_xgb = 0
+    full_score_nn = 0
+
+    print("Running full data")
+    for i in range(iters):
+        full_score_xgb += classify.run_xgb(train, test)[1]
+        full_score_nn += classify.run_nn(train, test)[1]
+
+    full_score_xgb /= iters
+    full_score_nn /= iters
+
+    results[0] = [full_score_xgb, full_score_nn]
+
+    print(f"Running missing data")
+    # run the model on the missing data.
+    for rate in percentages:  # for each missing rate.
+        print(f"Rate: {rate}")
+
+        # Initialize the scores.
+        true_fill_xgb_score = 0
+        true_fill_nn_score = 0
+        metric_fill_xgb_score = 0
+        metric_fill_nn_score = 0
+        unfilled_xgb_score = 0
+        unfilled_nn_score = 0
+
+        for i in range(iters):
+            print(f"\tIteration: {i + 1}")
+            # remove data at random.
+            data, mask = remove_random_cells(full_data.copy(), rate)
+            data = z_score(data)
+            x_true_fill = data.copy().drop(data.columns[-1], axis=1)
+            x_metric_fill = data.copy().drop(data.columns[-1], axis=1)
+            y = data.iloc[:, -1].copy()
+
+            unfilled = data.copy()
+            # replace nan with 0.
+            unfilled = unfilled.fillna(0)
+
+            # run xgb and nn on unfilled data.
+            u_train, u_test = train_test_split(unfilled.copy(), test_size=0.2)
+            unfilled_xgb_score += round(classify.run_xgb(u_train, u_test)[1], 2)
+            unfilled_nn_score += round(classify.run_nn(u_train, u_test)[1], 2)
+
+            # calculate metric edges.
+            dists = get_custom_distances(x_metric_fill)
+            metric_edges = mg.get_knn_edges(dists.values, 5)
+
+            # fill the data once with true edges and once with metric edges.
+            x_true_fill = torch.from_numpy(x_true_fill.values.astype(np.float32)).to(device)
+            x_metric_fill = torch.from_numpy(x_metric_fill.values.astype(np.float32)).to(device)
+            y = torch.from_numpy(y.values.astype(np.int64)).to(device)
+
+            filling_true = filling("feature_propagation", edges_true, x_true_fill, mask, num_iterations=10)
+            filled_true = pd.concat([pd.DataFrame(filling_true.cpu().numpy()), pd.DataFrame(y)], axis=1)
+
+            filling_metric = filling("feature_propagation", metric_edges, x_metric_fill, mask, num_iterations=10)
+            filled_metric = pd.concat([pd.DataFrame(filling_metric.cpu().numpy()), pd.DataFrame(y)], axis=1)
+
+            # run xgb on filled data.
+            f_train, f_test = train_test_split(filled_true, test_size=0.2)
+            true_fill_xgb_score += round(classify.run_xgb(f_train, f_test)[1], 2)
+            true_fill_nn_score += round(classify.run_nn(f_train, f_test)[1], 2)
+            f_train, f_test = train_test_split(filled_metric, test_size=0.2)
+            metric_fill_xgb_score += round(classify.run_xgb(f_train, f_test)[1], 2)
+            metric_fill_nn_score += round(classify.run_nn(f_train, f_test)[1], 2)
+
+        # calculate the average scores.
+        true_fill_xgb_score /= iters
+        true_fill_nn_score /= iters
+        metric_fill_xgb_score /= iters
+        metric_fill_nn_score /= iters
+        unfilled_xgb_score /= iters
+        unfilled_nn_score /= iters
+
+        results[rate] = [true_fill_xgb_score, true_fill_nn_score, metric_fill_xgb_score, metric_fill_nn_score,
+                         unfilled_xgb_score, unfilled_nn_score]
+
+    # save the results as json.
+    import json
+    with open(f"auc results/{name}.json", "w") as f:
+        json.dump(results, f)
+
+    return results
+
+
+def plot_auc_per_percentage(ds_results: list,):
+    """
+    This method takes a list of dictionaries of results for different datasets, and plots the auc distribution for each
+    result for every missing rate.
+    :param ds_results:  list of dictionaries of results.
+    :return:
+    """
+
+    full_scores_xgb = []
+    full_scores_nn = []
+    for dct in ds_results:
+        full_scores_xgb.append(dct['0'][0])
+        full_scores_nn.append(dct['0'][1])
+
+    for rate in ds_results[0].keys():
+
+        if rate == '0':
+            continue
+
+        xgb_fills_true = []
+        nn_fills_true = []
+        xgb_fills_metric = []
+        nn_fills_metric = []
+        xgb_unfilled = []
+        nn_unfilled = []
+
+        for dct in ds_results:
+            xgb_fills_true.append(dct[rate][0])
+            nn_fills_true.append(dct[rate][1])
+            xgb_fills_metric.append(dct[rate][2])
+            nn_fills_metric.append(dct[rate][3])
+            xgb_unfilled.append(dct[rate][4])
+            nn_unfilled.append(dct[rate][5])
+
+        # plot the results. (make a kde distribution for each result).
+        sns.kdeplot(full_scores_xgb, label="Full data XGB")
+        sns.kdeplot(full_scores_nn, label="Full data NN")
+        sns.kdeplot(xgb_fills_true, label="True edges XGB")
+        sns.kdeplot(nn_fills_true, label="True edges NN")
+        sns.kdeplot(xgb_fills_metric, label="Metric edges XGB")
+        sns.kdeplot(nn_fills_metric, label="Metric edges NN")
+        sns.kdeplot(xgb_unfilled, label="Unfilled XGB")
+        sns.kdeplot(nn_unfilled, label="Unfilled NN")
+        plt.title(f"AUC distribution for missing rate {rate} over {len(ds_results)} datasets")
+        plt.xlabel("AUC")
+        plt.ylabel("Density")
+        plt.legend(framealpha=0.5)
+        # maybe save figure.
+        os.makedirs("auc_plots", exist_ok=True)
+        plt.savefig(f"auc_plots/{rate}.png")
+        plt.show()
+        plt.clf()
+
+
+def make_lineplots():
+    x_vals = [.1, .2, .3, .4, .5, .6, .7, .8, .9]
+    for file in os.listdir('auc results/'):
+        # unload the json.
+        with open(f"auc results/{file}", "r") as f:
+            import json
+            results = json.load(f)
+
+        # get the full results.
+        full_xgb, full_nn = results['0']
+        unfilled_xgb, unfilled_nn = [], []
+        filled_metric_xgb, filled_metric_nn = [], []
+        filled_true_xgb, filled_true_nn = [], []
+        # for each or the others, make a new list of the results.
+        rates = list(results.keys())
+        for rate in rates:
+            if rate == '0':
+                continue
+
+            filled_true_xgb.append(full_xgb - results[rate][0])
+            filled_true_nn.append(full_nn - results[rate][1])
+            filled_metric_xgb.append(full_xgb - results[rate][2])
+            filled_metric_nn.append(full_nn - results[rate][3])
+            unfilled_xgb.append(full_xgb - results[rate][4])
+            unfilled_nn.append(full_nn - results[rate][5])
+
+        # plot the results.
+        rates = x_vals
+        plt.plot(rates, filled_true_xgb, label="True edges XGB")
+        plt.plot(rates, filled_true_nn, label="True edges NN")
+        plt.plot(rates, filled_metric_xgb, label="Metric edges XGB")
+        plt.plot(rates, filled_metric_nn, label="Metric edges NN")
+        plt.plot(rates, unfilled_xgb, label="Unfilled XGB")
+        plt.plot(rates, unfilled_nn, label="Unfilled NN")
+        plt.xlabel("Percentage of missing data")
+        plt.ylabel("AUC difference") if file[:-5] not in ['Redwine', 'Whitewine', 'accent-mfcc-data-1'] else (
+            plt.ylabel('F1 difference'))
+        plt.title(f"{file[:-5]}")
+        plt.legend()
+        plt.grid()
+        plt.show()
+
+
+def test_filling_auc_gcn(name: str, percentages: list, iters: int = 10, multiclass: bool = False):
+    """
+    This method takes a dataset (tabular, binary), and for each removal percentage it
+    executes the following methods:
+    1. XGB and NN on the full data.
+    2. XGB and NN on the missing data after filling with the correct edges (KNN on full data).
+    3. XGB and NN on the missing data after filling with the metric edges (KNN in the missing data).
+    4. XGB and NN on the unfilled data.
+
+    After all of those, it returns a dictionary with the results (percentage: 8 results for each percentage).
+
+    :param name:  name of the dataset.
+    :param percentages:  list of percentages to remove.
+    :param iters:  number of iterations for each percentage.
+    :param multiclass:  whether the dataset is multiclass or not.
+    :return:
+    """
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(device)
+    # read the data.
+    _df = pd.read_csv(f"data/binary/{name}.csv") if not multiclass else pd.read_csv(f"data/multiclass/{name}.csv")
+    full_data = shuffle(_df)  # shuffle the data.
+
+    print(f"Running missing data")
+    # run the model on the missing data.
+    for rate in percentages:  # for each missing rate.
+        print(f"Rate: {rate}")
+
+        gcn_score = 0
+        xgb_score = 0
+
+        for i in range(iters):
+            print(f"\tIteration: {i + 1}")
+            # remove data at random.
+            data, mask = remove_random_cells(full_data.copy(), rate)
+            data = z_score(data)
+            x_metric_fill = data.copy().drop(data.columns[-1], axis=1)
+            y = data.iloc[:, -1].copy()
+
+            # calculate metric edges.
+            dists = get_custom_distances(x_metric_fill)
+            metric_edges = mg.get_knn_edges(dists.values, 5)
+
+            # fill the data once with true edges and once with metric edges.
+            x_metric_fill = torch.from_numpy(x_metric_fill.values.astype(np.float32)).to(device)
+            y = torch.from_numpy(y.values.astype(np.int64)).to(device)
+
+            filling_metric = filling("feature_propagation", metric_edges, x_metric_fill, mask, num_iterations=10)
+            filled_metric = pd.concat([pd.DataFrame(filling_metric.cpu().numpy()), pd.DataFrame(y)], axis=1)
+
+            train, test = train_test_split(filled_metric, test_size=0.2)
+            all_data = pd.concat([train, test], axis=0)
+            data = torch_geometric.data.Data(x=torch.tensor(all_data.iloc[:, :-1].values, dtype=torch.float),
+                                             y=torch.tensor(all_data.iloc[:, -1].values, dtype=torch.long),
+                                             edge_index=metric_edges)
+
+            train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+            test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+
+            train_mask[:len(train)] = True
+            test_mask[len(train):] = True
+
+            data.train_mask = train_mask
+            data.test_mask = test_mask
+
+            gcn_score += classify.run_gcn(data)[1]
+            xgb_score += classify.run_xgb(train, test)[1]
+
+        gcn_score /= iters
+        xgb_score /= iters
+
+        print(f"GCN: {gcn_score}, XGB: {xgb_score} in '{name}'")
+
+
+def make_lineplots_gcn():
+    x_vals = [.1, .2, .3, .4, .5, .6, .7, .8, .9]
+    for file in os.listdir('gcn results/'):
+        # unload the json.
+        with open(f"gcn results/{file}", "r") as f:
+            import json
+            results = json.load(f)
+
+        # get the full results.
+        full_score = results['0'][0]
+        unfilled, filled_metric, filled_true = [], [], []
+        # for each or the others, make a new list of the results.
+        rates = list(results.keys())
+        for rate in rates:
+            if rate == '0':
+                continue
+
+            filled_true.append(full_score - results[rate][0])
+            filled_metric.append(full_score - results[rate][1])
+            unfilled.append(full_score - results[rate][2])
+
+        # plot the results.
+        rates = x_vals
+        plt.plot(rates, filled_true, label="True edges")
+        plt.plot(rates, filled_metric, label="Metric edges")
+        plt.plot(rates, unfilled, label="Unfilled")
+        plt.xlabel("Percentage of missing data")
+        plt.ylabel("AUC difference")
+        plt.title(f"{file[:-5]}")
+        plt.legend()
+        plt.grid()
+        plt.show()
+
+
+def compare_xgb_gcn(name: str, multiclass: bool = False):
+    """
+    :param name:  name of the dataset.
+    :return:
+    """
+
+    # Load banknote dataset
+    df_ = pd.read_csv(f'data/binary/{name}.csv') if not multiclass else pd.read_csv(f'data/multiclass/{name}.csv')
+    # shuffle the dataset
+    df_ = df_.sample(frac=1).reset_index(drop=True)
+    df_ = df.z_score(df_)
+    train, test = train_test_split(df_, test_size=0.2)
+    df_ = pd.concat([train, test], axis=0)
+    # Split the dataset into features and labels
+    features = df_.iloc[:, :-1]
+    labels = df_.iloc[:, -1]
+
+    # Generate edges using knn.
+    # We will generate edges using the knn algorithm.
+    # We will use the sklearn library to generate the edges.
+
+    # Generate edges using knn
+    edges_ = kneighbors_graph(features, n_neighbors=5, mode='connectivity', include_self=False)
+
+    # Convert the edge matrix to a list of edges.
+    edges_ = edges_.tocoo()
+
+    # Create a list of edges as a tensor
+    edges_ = torch.tensor([edges_.row, edges_.col], dtype=torch.long)
+
+    # Create a data object
+    data = torch_geometric.data.Data(x=torch.tensor(features.values, dtype=torch.float),
+                                     y=torch.tensor(labels.values, dtype=torch.long),
+                                     edge_index=edges_)
+    train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+    test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+
+    train_mask[:len(train)] = True
+    test_mask[len(train):] = True
+    data.train_mask = train_mask
+    data.test_mask = test_mask
+
+    gcn_score = classify.run_gcn(data)
+
+    # Load the features and labels from the dataset
+    features = data.x.cpu().numpy()
+    labels = data.y.cpu().numpy()
+
+    # Load the train and test masks
+    train_mask = data.train_mask.cpu().numpy()
+    test_mask = data.test_mask.cpu().numpy()
+
+    # Train the xgboost model
+    train_features = features[train_mask]
+    train_labels = labels[train_mask]
+    test_features = features[test_mask]
+    test_labels = labels[test_mask]
+
+    xgb_score = classify.run_xgb(train, test)
+
+    print(f"XGB: {xgb_score}, GCN: {gcn_score}")
